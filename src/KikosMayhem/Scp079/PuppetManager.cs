@@ -16,6 +16,7 @@ using MapGeneration;
 using PlayerRoles;
 using PlayerRoles.PlayableScps.Scp079;
 using PlayerStatsSystem;
+using MapGeneration.Distributors;
 using UnityEngine;
 
 namespace KikosMayhem.Scp079;
@@ -29,6 +30,9 @@ public sealed class ToothAndNail : CustomItem
     public override ItemType BaseType => ItemType.GunSCP127;
     public override string Description => "Puppet's SCP-127. Tier follows SCP-079 (T3 → tier 2, T5 → tier 3): more penetration and hume shield.";
     public override bool Hidden => true;
+    public override int RegenAmount => 3;
+    public override float RegenInterval => 1f;
+    public override float RegenDelayAfterShot => 4f;
 
     public static int Tier
     {
@@ -92,8 +96,13 @@ public sealed class PuppetManager : MayhemModule
     public float PickDeadline;
     public float GraceEnds;
     public float GeneratorsLockedUntil;
-    public int Lives;
-    public int MaxLives;
+    /// <summary>Every generator that hasn't been engaged is a life for the Puppet.</summary>
+    public int Lives => GeneratorSpawner.All.Count(g => !g.Engaged);
+    public int MaxLives => GeneratorSpawner.All.Count();
+    private readonly HashSet<Scp079Generator> _legitEngaged = new();
+    private bool _soloTriggered;
+    public float ComputerStunnedUntil;
+    private readonly Dictionary<ReferenceHub, (float until, float startHp)> _itemHealCap = new();
     public bool Ascended;
     public Player LastPuppetKiller;
 
@@ -118,6 +127,9 @@ public sealed class PuppetManager : MayhemModule
         PlayerEvents.DroppingItem += OnDropping;
         PlayerEvents.UsingItem += OnUsingItem;
         PlayerEvents.EnteringPocketDimension += OnEnteringPocket;
+        PlayerEvents.PickingUpItem += OnPickingUp;
+        PlayerEvents.TriggeringTesla += OnTesla;
+        MayhemSettings.QuickRecyclePressed += QuickRecycle;
         Scp096Events.AddingTarget += On096Target;
         Scp173Events.AddingObserver += On173Observer;
         Combat.Pre.Add(PuppetDamageRules);
@@ -140,6 +152,9 @@ public sealed class PuppetManager : MayhemModule
         PlayerEvents.DroppingItem -= OnDropping;
         PlayerEvents.UsingItem -= OnUsingItem;
         PlayerEvents.EnteringPocketDimension -= OnEnteringPocket;
+        PlayerEvents.PickingUpItem -= OnPickingUp;
+        PlayerEvents.TriggeringTesla -= OnTesla;
+        MayhemSettings.QuickRecyclePressed -= QuickRecycle;
         Scp096Events.AddingTarget -= On096Target;
         Scp173Events.AddingObserver -= On173Observer;
         Instance = null;
@@ -150,7 +165,10 @@ public sealed class PuppetManager : MayhemModule
         Puppets.Clear();
         Active = Picked = Ascended = false;
         PickDeadline = GraceEnds = GeneratorsLockedUntil = 0;
-        Lives = MaxLives = 0;
+        _legitEngaged.Clear();
+        _soloTriggered = false;
+        ComputerStunnedUntil = 0;
+        _itemHealCap.Clear();
         AscendedTier = 0;
         LastPuppetKiller = null;
         _computerHub = null;
@@ -180,8 +198,7 @@ public sealed class PuppetManager : MayhemModule
         _computerHub = pc.ReferenceHub;
         var cfg = MayhemPlugin.Cfg.Scp079;
         int players = Player.ReadyList.Count(p => !p.IsHost);
-        MaxLives = 2 + cfg.GeneratorThresholds.Skip(1).Count(t => players >= t);
-        Lives = MaxLives;
+        GeneratorSpawner.Adjust(GeneratorSpawner.TargetFor(players));
         PickDeadline = Time.time + cfg.PickSeconds;
 
         if (pc.RoleBase is Scp079Role role && role.SubroutineModule.TryGetSubroutine<Scp079AuxManager>(out var aux))
@@ -194,6 +211,9 @@ public sealed class PuppetManager : MayhemModule
     // ───────── picking ─────────
 
     public List<Player> Candidates() =>
+        CandidatesRaw().Where(p => !MayhemSettings.OptedOutOfPuppet(p)).ToList() is { Count: > 0 } willing ? willing : CandidatesRaw();
+
+    private List<Player> CandidatesRaw() =>
         Player.ReadyList.Where(p => !p.IsHost && !p.IsSCP && !IsPuppet(p) && p.Role != RoleTypeId.Overwatch).OrderBy(p => p.PlayerId).ToList();
 
     public string Pick(Player target)
@@ -201,6 +221,8 @@ public sealed class PuppetManager : MayhemModule
         if (!Active) return "SCP-079 isn't in this round.";
         if (Picked) return "You already have a Puppet.";
         if (target == null || target.IsSCP || target.IsHost) return "That player can't be your Puppet.";
+        if (MayhemSettings.OptedOutOfPuppet(target) && Candidates().Any(c => c != target && !MayhemSettings.OptedOutOfPuppet(c)))
+            return $"{target.Nickname} opted out of being Puppet. Pick someone else.";
         Picked = true;
         GraceEnds = Time.time + MayhemPlugin.Cfg.Scp079.GraceSeconds;
         GeneratorsLockedUntil = GraceEnds;
@@ -211,7 +233,7 @@ public sealed class PuppetManager : MayhemModule
         return $"{target.Nickname} is now your Puppet.";
     }
 
-    public void SpawnPuppet(Player p, bool grace, bool ascendedForm = false)
+    public void SpawnPuppet(Player p, bool grace, bool ascendedForm = false, float stun = 0f)
     {
         var cfg = MayhemPlugin.Cfg.Scp079;
         if (!Puppets.Contains(p.ReferenceHub)) Puppets.Add(p.ReferenceHub);
@@ -240,7 +262,13 @@ public sealed class PuppetManager : MayhemModule
             ItemEngine.Give(p, "tooth_and_nail");
             p.AddAmmo(ItemType.Ammo556x45, 200);
 
-            float hp = ascendedForm ? MayhemPlugin.Cfg.Ascension.AscendedHealth : cfg.PuppetBaseHealth + cfg.PuppetHealthPerTier * (Tier - 1);
+            float hp = ascendedForm ? MayhemPlugin.Cfg.Ascension.AscendedHealth : cfg.PuppetBaseHealth;
+            if (stun > 0)
+            {
+                p.EnableEffect<Ensnared>(1, stun);
+                p.EnableEffect<Concussed>(1, stun);
+                EffectManager.Apply<Invincible>(p, stun);
+            }
             p.MaxHealth = hp;
             p.Health = hp;
             p.CustomInfo = ascendedForm ? "<color=#00FFFF>ASCENDED SCP-079</color>" : "<color=#FF4040>SCP-079's Puppet</color>";
@@ -263,6 +291,12 @@ public sealed class PuppetManager : MayhemModule
         var cfg = MayhemPlugin.Cfg.Scp079;
 
         if (!Active) Setup079(pc);
+        if (Time.time < ComputerStunnedUntil)
+        {
+            ev.IsAllowed = false;
+            Hud.Message(pc, $"<color=#FF7070>Systems rebooting ({ComputerStunnedUntil - Time.time:0}s)</color>", 1.5f, "stun");
+            return;
+        }
 
         // Pick a puppet by pinging a player.
         if (!Picked)
@@ -285,10 +319,11 @@ public sealed class PuppetManager : MayhemModule
                 Hud.Message(pc, "Can't heal the Puppet during decontamination", 2f);
                 return;
             }
+            float ratio = cfg.PingHealPerAux;
             float missing = puppet.MaxHealth - puppet.Health;
-            float heal = Mathf.Min(missing, aux.CurrentAux);
+            float heal = Mathf.Min(missing, aux.CurrentAux * ratio);
             if (heal <= 0) return;
-            aux.CurrentAux -= heal;
+            aux.CurrentAux -= heal / ratio;
             puppet.Heal(heal);
             Hud.Message(pc, $"<color=#88FF88>Healed Puppet +{heal:0}</color>", 1.5f);
             return;
@@ -462,9 +497,6 @@ public sealed class PuppetManager : MayhemModule
         if (!targetPuppet) return;
 
         _lastDamage[target.ReferenceHub] = Time.time;
-        var cfg = MayhemPlugin.Cfg.Scp079;
-        int lost = MaxLives - Lives;
-        if (lost > 0 && !Ascended) Combat.MultiplyDamage(ev, 1f + lost * cfg.DamageTakenPerActiveGenerator / 100f);
 
         // One-shot protection: while hume shield is up, health can't be damaged at all.
         // We absorb ourselves (some handlers, e.g. the jailbird, skip vanilla hume shield).
@@ -504,8 +536,21 @@ public sealed class PuppetManager : MayhemModule
         if (!IsPuppet(ev.Player) || ItemEngine.IsCustom(ev.UsableItem.Serial)) return;
         if (ev.UsableItem.Type is ItemType.Medkit or ItemType.SCP500 or ItemType.Painkillers or ItemType.Adrenaline)
         {
-            ev.IsAllowed = false;
-            Hud.Message(ev.Player, "Puppet can't heal itself — SCP-079 heals you by pinging you", 2f);
+            var p = ev.Player;
+            float cap = p.MaxHealth * MayhemPlugin.Cfg.Scp079.PuppetSelfHealPercent / 100f;
+            if (p.HasEffect<Decontaminating>() && p.GetEffect<Decontaminating>().IsEnabled)
+            {
+                ev.IsAllowed = false;
+                Hud.Message(p, "Can't heal while decontaminating", 2f);
+                return;
+            }
+            if (p.Health >= cap)
+            {
+                ev.IsAllowed = false;
+                Hud.Message(p, $"Puppet can only heal itself up to {cap:0} HP — SCP-079 can heal you further", 2f);
+                return;
+            }
+            _itemHealCap[p.ReferenceHub] = (Time.time + 20f, p.Health);
         }
     }
 
@@ -529,27 +574,46 @@ public sealed class PuppetManager : MayhemModule
     private void OnGeneratorActivated(PlayerActivatedGeneratorEventArgs ev)
     {
         if (!Active || Ascended) return;
-        LoseLife(ev.Player, fromGenerator: true);
+        OnGeneratorActivatedLegit(ev.Generator);
+        if (Lives <= 0 && _soloTriggered) RecontainComputer(ev.Player);
     }
 
-    private void LoseLife(Player killer, bool fromGenerator)
+    /// <summary>A generator a human finished is legitimately engaged.</summary>
+    private void OnGeneratorActivatedLegit(Generator gen)
     {
-        Lives = Mathf.Max(0, Lives - 1);
-        if (!fromGenerator)
+        if (gen?.Base != null) _legitEngaged.Add(gen.Base);
+    }
+
+    /// <summary>Puppet died with lives left: engage a random generator, shut off activating ones, lock them for a while.</summary>
+    private void SpendLife(Player killer)
+    {
+        var gen = GeneratorSpawner.All.Where(g => !g.Engaged).OrderBy(_ => Rng.Value).FirstOrDefault();
+        if (gen != null)
         {
-            var gen = Map.Generators.Where(g => !g.Engaged).OrderBy(_ => Rng.Value).FirstOrDefault();
-            if (gen != null && Lives > 0) gen.Engaged = true;
+            _legitEngaged.Add(gen);
+            gen.Engaged = true;
         }
+        foreach (var g in GeneratorSpawner.All.Where(g => g.Activating && !g.Engaged)) g.Activating = false;
         GeneratorsLockedUntil = Time.time + MayhemPlugin.Cfg.Scp079.GeneratorLockAfterDeath;
-        if (Lives <= 0) RecontainComputer(killer);
+        if (Lives <= 0 && _soloTriggered) RecontainComputer(killer);
     }
 
     private bool _killingComputer;
 
     private void OnRecontaining(Scp079RecontainingEventArgs ev)
     {
-        // Vanilla recontainment only happens once Mayhem says 079 is out of lives.
-        if (Active && !_killingComputer && Lives > 0 && AllPuppets.Any()) ev.IsAllowed = false;
+        // Vanilla's "last SCP died" auto-recontainment doesn't count while the Puppet is alive with lives left.
+        if (Active && !_killingComputer && AllPuppets.Any() && _legitEngaged.Count < MaxLives)
+        {
+            ev.IsAllowed = false;
+            _soloTriggered = true;
+            RestoreGenerators();
+        }
+    }
+
+    private void RestoreGenerators()
+    {
+        foreach (var g in GeneratorSpawner.All.Where(g => g.Engaged && !_legitEngaged.Contains(g)).ToList()) g.Engaged = false;
     }
 
     private void RecontainComputer(Player killer)
@@ -599,16 +663,22 @@ public sealed class PuppetManager : MayhemModule
             return;
         }
 
-        LoseLife(ev.Attacker, fromGenerator: false);
         if (Lives > 0 && Computer != null)
         {
+            SpendLife(ev.Attacker);
+            var cfg = MayhemPlugin.Cfg.Scp079;
+            ComputerStunnedUntil = Time.time + cfg.RespawnStunSeconds;
             CassieW.Say("pitch_0.9 .g2 SCP 0 7 9 host terminated . generator engaged", $"SCP-079's Puppet was terminated by {ev.Attacker?.Nickname ?? "unknown"}. Generator engaged.");
-            Loops.After(3f, () =>
+            Loops.After(0.5f, () =>
             {
-                if (p.Valid() && !p.IsAlive && Active && Lives > 0) SpawnPuppet(p, grace: false);
+                if (p.Valid() && !p.IsAlive && Active) SpawnPuppet(p, grace: false, stun: cfg.RespawnStunSeconds);
             });
         }
-        else Puppets.Remove(p.ReferenceHub);
+        else
+        {
+            Puppets.Remove(p.ReferenceHub);
+            CassieW.Say("pitch_0.9 .g2 SCP 0 7 9 host terminated", $"SCP-079's Puppet was terminated by {ev.Attacker?.Nickname ?? "unknown"}.");
+        }
     }
 
     private void OnChangedRole(PlayerChangedRoleEventArgs ev)
@@ -661,11 +731,15 @@ public sealed class PuppetManager : MayhemModule
             if (Time.time - last > cfg.HumeRegenDelay && puppet.HumeShield < max)
                 puppet.HumeShield = Mathf.Min(max, puppet.HumeShield + cfg.HumeRegenPerSecond * 0.5f);
 
-            // Max HP grows with 079's tier.
-            if (!Ascended)
+            // Healing items can only bring the Puppet up to 50% of max HP.
+            if (_itemHealCap.TryGetValue(puppet.ReferenceHub, out var capInfo))
             {
-                float hp = cfg.PuppetBaseHealth + cfg.PuppetHealthPerTier * (Tier - 1);
-                if (puppet.MaxHealth < hp) puppet.MaxHealth = hp;
+                if (Time.time > capInfo.until) _itemHealCap.Remove(puppet.ReferenceHub);
+                else
+                {
+                    float cap = Mathf.Max(capInfo.startHp, puppet.MaxHealth * cfg.PuppetSelfHealPercent / 100f);
+                    if (puppet.Health > cap) puppet.Health = cap;
+                }
             }
 
             // Ascended form regenerates quickly after a few seconds without damage.
@@ -681,6 +755,13 @@ public sealed class PuppetManager : MayhemModule
             Hud.SetInfo(puppet, "puppet", Ascended
                 ? "<color=#00FFFF>ASCENDED</color> · Kill everyone or reach the Gate B exit"
                 : $"<color=#FF4040>SCP-079</color> T{Tier} · Lives {Lives}/{MaxLives} · T&N tier {ToothAndNail.Tier}{grace}", 1f, 1);
+        }
+
+        // Vanilla engages every generator when the last other SCP dies — undo that while the Puppet lives.
+        if (Active && Picked && !Ascended && AllPuppets.Any() && MaxLives > 0 && Lives == 0 && _legitEngaged.Count < MaxLives)
+        {
+            _soloTriggered = true;
+            RestoreGenerators();
         }
 
         // HUD for 079.
@@ -705,6 +786,57 @@ public sealed class PuppetManager : MayhemModule
         if (pc == null) return;
         _computerHub = pc.ReferenceHub;
         SpawnPuppet(pc, grace: false, ascendedForm: true);
+        // Both Puppets get 10s of spawn protection on ascension.
+        Loops.After(0.5f, () =>
+        {
+            foreach (var puppet in AllPuppets) EffectManager.Apply<Invincible>(puppet, MayhemPlugin.Cfg.Ascension.SpawnProtectionSeconds);
+        });
+    }
+
+    // ───────── pickups / recycling ─────────
+
+    private static bool AllowedForPuppet(Pickup pickup)
+    {
+        if (pickup.Category is ItemCategory.Armor or ItemCategory.Medical or ItemCategory.Grenade or ItemCategory.Keycard
+            or ItemCategory.Radio or ItemCategory.Ammo) return true;
+        return pickup.Type is ItemType.Coin or ItemType.Flashlight or ItemType.SCP018 or ItemType.SCP244a or ItemType.SCP244b
+            or ItemType.Lantern or ItemType.SCP500;
+    }
+
+    private void OnPickingUp(PlayerPickingUpItemEventArgs ev)
+    {
+        if (!IsPuppet(ev.Player) || ev.Pickup == null) return;
+        if (ItemEngine.Get(ev.Pickup.Serial) is { } def && def is not ToothAndNail)
+        {
+            // Puppet can't use custom items: they're sent to the Pocket Dimension instead.
+            ev.IsAllowed = false;
+            Recycling.SendToPocket(ev.Pickup);
+            Hud.Message(ev.Player, $"{def.Name} was sent to the Pocket Dimension", 2f);
+            return;
+        }
+        if (!AllowedForPuppet(ev.Pickup))
+        {
+            ev.IsAllowed = false;
+            Hud.Message(ev.Player, "Puppet can't pick that up", 1.5f, "nopickup");
+        }
+    }
+
+    /// <summary>Quick Recycle keybind: sends the closest custom item (within 2.5m) to the Pocket Dimension.</summary>
+    private void QuickRecycle(Player p)
+    {
+        if (!IsPuppet(p) || !p.IsAlive) return;
+        float r = MayhemPlugin.Cfg.Scp079.QuickRecycleRange;
+        var closest = Pickup.List.Where(x => !x.IsDestroyed && x is not Projectile && ItemEngine.IsCustom(x.Serial)
+                                             && (x.Position - p.Position).sqrMagnitude <= r * r)
+            .OrderBy(x => (x.Position - p.Position).sqrMagnitude).FirstOrDefault();
+        if (closest == null) { Hud.Message(p, "No custom item in range", 1.2f, "recycle"); return; }
+        Recycling.SendToPocket(closest);
+        Hud.Message(p, "Recycled", 1.2f, "recycle");
+    }
+
+    private void OnTesla(PlayerTriggeringTeslaEventArgs ev)
+    {
+        if (IsPuppet(ev.Player)) ev.IsAllowed = false;
     }
 
     /// <summary>Puppets that can be teleported by items (not during the recontainment run).</summary>

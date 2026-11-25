@@ -65,6 +65,7 @@ public sealed class EventsModule : MayhemModule
     {
         Instance = this;
         PlayerEvents.Death += OnDeath;
+        PlayerEvents.Dying += OnDying;
         PlayerEvents.Joined += OnJoined;
         PlayerEvents.SendingVoiceMessage += OnVoice;
         PlayerEvents.Left += OnLeft;
@@ -76,6 +77,7 @@ public sealed class EventsModule : MayhemModule
     public override void Unregister()
     {
         PlayerEvents.Death -= OnDeath;
+        PlayerEvents.Dying -= OnDying;
         PlayerEvents.Joined -= OnJoined;
         PlayerEvents.SendingVoiceMessage -= OnVoice;
         PlayerEvents.Left -= OnLeft;
@@ -202,14 +204,21 @@ public sealed class EventsModule : MayhemModule
         }
     }
 
+    private static readonly ItemType[] Consumables =
+        { ItemType.SCP1853, ItemType.SCP1853, ItemType.SCP1853, ItemType.SCP500, ItemType.SCP207, ItemType.AntiSCP207, ItemType.Adrenaline, ItemType.Painkillers, ItemType.Medkit };
+
+    /// <summary>Every item becomes a consumable (mostly SCP-1853), sometimes a custom consumable.</summary>
     private static void ReplaceAllWith1853()
     {
+        var customConsumables = ItemEngine.Spawnable.Where(d => d.BaseType is ItemType.SCP1853 or ItemType.SCP500 or ItemType.SCP207
+            or ItemType.AntiSCP207 or ItemType.Adrenaline or ItemType.Painkillers or ItemType.Medkit).ToList();
         foreach (var p in MapPickups())
         {
-            if (p.Category == ItemCategory.Ammo || p.Type == ItemType.SCP1853) continue;
+            if (p.Category == ItemCategory.Ammo) continue;
             var pos = p.Position;
             p.Destroy();
-            Pickup.Create(ItemType.SCP1853, pos);
+            if (customConsumables.Count > 0 && Rng.Chance(10)) ItemEngine.Spawn(Rng.Pick(customConsumables), pos);
+            else Pickup.Create(Rng.Pick(Consumables), pos);
         }
     }
 
@@ -224,6 +233,12 @@ public sealed class EventsModule : MayhemModule
     }
 
     // ───────── deaths ─────────
+
+    /// <summary>M.Y.H.M Insurgents don't drop their gear.</summary>
+    private static void OnDying(PlayerDyingEventArgs ev)
+    {
+        if (ev.IsAllowed && MyhmInsurgency.IsInsurgent(ev.Player)) ev.Player.ClearInventory();
+    }
 
     private void OnDeath(PlayerDeathEventArgs ev)
     {
@@ -259,6 +274,12 @@ public sealed class EventsModule : MayhemModule
     {
         var zones = new List<FacilityZone> { FacilityZone.HeavyContainment, FacilityZone.Entrance };
         if (!Decontamination.IsDecontaminating) zones.Add(FacilityZone.LightContainment);
+        // Don't drop people into a facility that's about to blow.
+        bool deadman = Warhead.IsDetonationInProgress && Warhead.ScenarioType == WarheadScenarioType.DeadmanSwitch;
+        if (Warhead.IsDetonated || deadman || (Warhead.IsDetonationInProgress && Warhead.DetonationTime < 45f))
+            zones = new List<FacilityZone> { FacilityZone.Surface };
+        else if (Warhead.IsDetonationInProgress && Warhead.DetonationTime < 90f)
+            zones = new List<FacilityZone> { FacilityZone.Entrance };
         var room = Rng.Pick(Room.List.Where(r => !r.IsDestroyed && zones.Contains(r.Zone) && !avoid.Contains(r)
                                                  && !ItemSpawner.IsBlacklisted(r) && r.Name is not (RoomName.Pocket or RoomName.Hcz079)).ToList());
         Teleports.ToRoom(p, room);
@@ -277,7 +298,7 @@ public sealed class EventsModule : MayhemModule
     /// <summary>You May Want To Be Quiet: peaking your mic makes you explode.</summary>
     private void OnVoice(PlayerSendingVoiceMessageEventArgs ev)
     {
-        if (Sub != SubEvent.BeQuiet || !ev.Player.IsAlive || ev.Player.IsSCP) return;
+        if (Sub != SubEvent.BeQuiet || !ev.Player.IsAlive || ev.Player.IsSCP || ev.Player.IsMuted) return;
         var hub = ev.Player.ReferenceHub;
         if (_quietCooldown.TryGetValue(hub, out var cd) && cd > Time.time) return;
         try

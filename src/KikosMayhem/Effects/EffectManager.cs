@@ -66,7 +66,7 @@ public static class EffectManager
     public static IEnumerable<CustomEffect> Of(Player p) =>
         p.Valid() && Effects.TryGetValue(p.ReferenceHub, out var l) ? l : Enumerable.Empty<CustomEffect>();
 
-    public static T Get<T>(Player p) where T : CustomEffect => Of(p).OfType<T>().FirstOrDefault();
+    public static T Get<T>(Player p) where T : CustomEffect => Of(p).OfType<T>().FirstOrDefault(e => e.Expires <= 0 || e.Expires > Time.time);
 
     public static bool Has<T>(Player p) where T : CustomEffect => Get<T>(p) != null;
 
@@ -191,19 +191,23 @@ public static class EffectManager
     }
 
     // Combat hooks (called from Combat).
+    // Effects expire on the 1s tick; combat hooks check expiry exactly so short effects (0.3s immunity) are precise.
+    private static IEnumerable<CustomEffect> Live(Player p) =>
+        Of(p).Where(e => e.Expires <= 0 || e.Expires > Time.time).ToList();
+
     internal static void Attacking(Player attacker, Player target, PlayerHurtingEventArgs ev)
     {
-        foreach (var e in Of(attacker).ToList()) e.OnOwnerAttacking(target, ev);
+        foreach (var e in Live(attacker)) e.OnOwnerAttacking(target, ev);
     }
 
     internal static void Hurting(Player target, Player attacker, PlayerHurtingEventArgs ev)
     {
-        foreach (var e in Of(target).ToList()) e.OnOwnerHurting(attacker, ev);
+        foreach (var e in Live(target)) e.OnOwnerHurting(attacker, ev);
     }
 
     internal static void Dying(PlayerDyingEventArgs ev)
     {
-        foreach (var e in Of(ev.Player).ToList())
+        foreach (var e in Live(ev.Player))
         {
             e.OnOwnerDying(ev);
             if (!ev.IsAllowed) return;

@@ -53,7 +53,8 @@ public sealed class HotswapCoin : CustomItem
     public override string Name => "Hotswap Coin";
     public override Rarity Rarity => Rarity.Upgraded;
     public override ItemType BaseType => ItemType.Coin;
-    public override string Description => "Swap positions with 1 random player. Doesn't work on SCPs (except Puppet).";
+    public override string Description => "Swap positions with 1 random player. Doesn't work on SCPs or Puppet.";
+    public override bool PuppetBlocked => true;
 
     public override bool OnFlipping(Player p, CoinItem coin) =>
         !ItemEngine.OnCooldown(p, coin.Serial, "hotswap", MayhemPlugin.Cfg.Items.WarpCoinCooldown);
@@ -61,7 +62,7 @@ public sealed class HotswapCoin : CustomItem
     public override void OnFlipped(Player p, CoinItem coin, bool tails)
     {
         if (!p.CanTeleport()) return;
-        var target = Rng.Pick(PlayerExt.Alive.Where(o => o != p && (!o.IsSCP || o.IsPuppet()) && o.CanTeleport()).ToList());
+        var target = Rng.Pick(PlayerExt.Alive.Where(o => o != p && !o.IsSCP && !o.IsPuppet() && o.CanTeleport()).ToList());
         if (target == null) { Msg(p, "Nobody to swap with"); return; }
         var a = p.Position;
         p.Position = target.Position;

@@ -23,6 +23,7 @@ public static class ItemEngine
     private static readonly Dictionary<(ushort, string), float> Cooldowns = new();
     private static readonly Dictionary<ushort, float> RegenClock = new();
     private static readonly HashSet<ushort> AmmoInitialized = new();
+    private static readonly Dictionary<ushort, float> LastShot = new();
 
     /// <summary>Custom item that owns the explosion currently being processed (set between Exploding/Exploded).</summary>
     public static CustomItem CurrentExplosion { get; private set; }
@@ -125,7 +126,7 @@ public static class ItemEngine
         try
         {
             int cap = def.AmmoCap > 0 ? def.AmmoCap : fa.MaxAmmo;
-            fa.StoredAmmo = cap;
+            SetStoredAmmo(fa, cap);
         }
         catch (Exception e)
         {
@@ -255,6 +256,7 @@ public static class ItemEngine
 
     private static void OnChangedItem(PlayerChangedItemEventArgs ev) => Safe("equip", () =>
     {
+        Items.Defs.JestersHat.TrackHeld(ev);
         if (ev.OldItem != null && Get(ev.OldItem) is { } oldDef) oldDef.OnUnequipped(ev.Player, ev.OldItem);
         if (ev.NewItem != null && Get(ev.NewItem) is { } def)
         {
@@ -364,6 +366,7 @@ public static class ItemEngine
         if (Get(ev.FirearmItem) is not { } def) return;
         var fa = ev.FirearmItem;
         var p = ev.Player;
+        LastShot[fa.Serial] = Time.time;
         // Damage is applied during the shot; evaluate on the next frame to be safe.
         MEC.Timing.CallDelayed(0.05f, () => Safe("shot-eval", () =>
         {
@@ -604,7 +607,7 @@ public static class ItemEngine
             FlushInventory(p, now);
 
             if (MayhemPlugin.Cfg.Items.ShowHeldDescription && held != null && Get(held) is { } hd)
-                Hud.SetInfo(p, "held", $"{hd.Rarity.Label()} <color={hd.Rarity.Hex()}><b>{hd.Name}</b></color>\n<size=16>{hd.Description}\n<i>{hd.UpgradeLine}</i></size>", 0.6f, 10);
+                Hud.SetInfo(p, "held", $"{hd.Rarity.Label()} <color={hd.Rarity.Hex()}><b>{hd.Name}</b></color>{HeldStatus(held, hd)}\n<size=16>{hd.Description}\n<i>{hd.UpgradeLine}</i></size>", 0.6f, 10);
         }
 
         // Rainbow aura for Admin items.
@@ -629,10 +632,46 @@ public static class ItemEngine
     {
         if (def.RegenAmount <= 0 || item is not FirearmItem fa) return;
         if (!def.RegenWhenHolstered && (held == null || held.Serial != item.Serial)) return;
+        if (def.RegenDelayAfterShot > 0 && LastShot.TryGetValue(item.Serial, out var shotAt) && Time.time - shotAt < def.RegenDelayAfterShot) return;
         if (RegenClock.TryGetValue(item.Serial, out var next) && next > Time.time) return;
         RegenClock[item.Serial] = Time.time + def.RegenInterval;
         int cap = def.AmmoCap > 0 ? def.AmmoCap : fa.MaxAmmo;
         if (fa.StoredAmmo >= cap) return;
-        fa.StoredAmmo = Mathf.Min(cap, fa.StoredAmmo + def.RegenAmount);
+        SetStoredAmmo(fa, Mathf.Min(cap, fa.StoredAmmo + def.RegenAmount));
+    }
+
+    /// <summary>Sets loaded ammo. Revolvers fill their cylinder from the first chamber (fires next), not the last.</summary>
+    public static void SetStoredAmmo(FirearmItem fa, int amount)
+    {
+        if (fa is RevolverFirearm rev)
+        {
+            int count = rev.Chambers.Count();
+            for (int i = 0; i < count; i++)
+                rev.SetChamberStatus(i, i < amount ? InventorySystem.Items.Firearms.Modules.CylinderAmmoModule.ChamberState.Live
+                                                    : InventorySystem.Items.Firearms.Modules.CylinderAmmoModule.ChamberState.Empty);
+            return;
+        }
+        fa.StoredAmmo = amount;
+    }
+
+    /// <summary>Bottom-of-screen status for the held custom item: live cooldowns and next ammo regen.</summary>
+    private static string HeldStatus(Item held, CustomItem def)
+    {
+        var parts = new List<string>();
+        foreach (var kv in Cooldowns)
+            if (kv.Key.Item1 == held.Serial && kv.Value > Time.time)
+                parts.Add($"<color=#FF7070>Cooldown {kv.Value - Time.time:0.0}s</color>");
+        if (def.RegenAmount > 0 && held is FirearmItem fa)
+        {
+            int cap = def.AmmoCap > 0 ? def.AmmoCap : fa.MaxAmmo;
+            if (fa.StoredAmmo < cap)
+            {
+                float next = RegenClock.TryGetValue(held.Serial, out var t) ? Mathf.Max(0, t - Time.time) : 0;
+                if (def.RegenDelayAfterShot > 0 && LastShot.TryGetValue(held.Serial, out var shot))
+                    next = Mathf.Max(next, def.RegenDelayAfterShot - (Time.time - shot));
+                parts.Add($"<color=#88CCFF>+{def.RegenAmount} ammo in {next:0.0}s ({fa.StoredAmmo}/{cap})</color>");
+            }
+        }
+        return parts.Count == 0 ? "" : "\n" + string.Join(" · ", parts);
     }
 }

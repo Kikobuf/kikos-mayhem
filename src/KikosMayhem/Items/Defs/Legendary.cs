@@ -68,7 +68,7 @@ public sealed class Minigun : CustomItem
     public override string Name => "Minigun";
     public override Rarity Rarity => Rarity.Legendary;
     public override ItemType BaseType => ItemType.GunCom45;
-    public override string Description => "COM-45 with 200 rounds that quickly regenerate. 15 damage per shot with 70% penetration.";
+    public override string Description => "COM-45 with 200 rounds that quickly regenerate. 15 damage per shot with 75% armor penetration.";
     public override int AmmoCap => 200;
     public override int RegenAmount => 12;
     public override float RegenInterval => 0.25f;
@@ -141,13 +141,8 @@ public sealed class Real500 : CustomItem
         p.Heal(p.MaxHealth);
         EffectManager.Remove<Irradiated>(p);
         if (p.IsPuppet()) return;
-        int n = 0;
-        foreach (var dead in PlayerExt.Spectators.ToList())
-        {
-            Gambling.GamblingModule.ReviveAs(dead, p);
-            n++;
-        }
-        Hud.MessageAll($"<color=#FFD700>{p.Nickname} used a Real 500 — {n} players revived!</color>");
+        RevivingPlayers.Start(p, int.MaxValue);
+        Hud.MessageAll($"<color=#FFD700>{p.Nickname} used a Real 500 — the dead are coming back!</color>");
     }
 }
 

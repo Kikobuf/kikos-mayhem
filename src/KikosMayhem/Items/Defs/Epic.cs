@@ -77,7 +77,7 @@ public sealed class Peacemaker : CustomItem
     {
         ev.IsAllowed = false;
         var cfg = MayhemPlugin.Cfg.Items;
-        if (target.IsSCP && target.Role != RoleTypeId.Scp0492)
+        if ((target.IsSCP && target.Role != RoleTypeId.Scp0492) || target.IsPuppet())
         {
             target.Health = Mathf.Min(target.MaxHealth, target.Health + cfg.PeacemakerScpHeal);
             attacker.Damage(attacker.Health * cfg.PeacemakerSelfCostPercent / 100f, "Gave their life force to an SCP.");

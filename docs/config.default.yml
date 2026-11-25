@@ -12,7 +12,9 @@ items:
   aura_range: 1.60000002
   # Custom items thrown into a pit go to SCP-106's dimension and are later recycled into the facility (also O5 / Facility Manager cards).
   recycle_from_pits: true
-  recycle_delay_seconds: 90
+  # Recycled items come back from the Pocket Dimension to a random facility spot after this many seconds (random between min and max).
+  recycle_min_seconds: 90
+  recycle_max_seconds: 240
   skinwalker_reveal_seconds: 3
   radiance_heal_per_second: 2
   radiance_max_ahp: 14
@@ -36,6 +38,10 @@ items:
   pinpointer_damage: 200
   peacemaker_scp_heal: 200
   peacemaker_self_cost_percent: 40
+  # Mitosis: how far the copy can be from its host before it destabilizes.
+  mitosis_max_range: 25
+  # Jester's Hat: seconds before the decoy vanishes.
+  jesters_hat_decoy_seconds: 30
 spawning:
 # Average custom items spawned per facility zone room at round start (rarity decides which).
   custom_items_per_room: 0.349999994
@@ -76,6 +82,9 @@ spawning:
     Com45: 0.5
     Scp018: 0.25
     OverloadedCom45: 0.0500000007
+  # Halloween: chance (percent) to spawn with a random candy. 'halloween_mode': Auto (October or the game's Halloween event), On, Off.
+  halloween_candy_chance: 30
+  halloween_mode: Auto
   # Remove dropped items and ragdolls older than this many seconds (0 = never).
   cleanup_after_seconds: 600
 effects:
@@ -84,7 +93,11 @@ effects:
   irradiated_scp_scalar: 0.349999994
   tazed_seconds: 3
   # Nuke room radiation: seconds you can stay before getting Irradiated, then it keeps stacking.
-  nuke_room_grace_seconds: 30
+  nuke_room_grace_seconds: 20
+  # Humans: radiation grows exponentially the longer you stay (multiplier per second inside past the grace).
+  nuke_room_human_growth: 1.12
+  # Seconds the Reviving Players effect (SCP-500 revives) waits for a safe spot before fizzling.
+  reviving_players_seconds: 30
   nuke_room_human_percent: 1
   nuke_room_scp_percent: 0.100000001
   # SCP-1853: crit chance (percent) and crit damage bonus per dose.
@@ -107,6 +120,8 @@ gambling:
     TeleportGuardsToClassD: 6
     CureZombies: 8
     TeleportToScp: 6
+    ScientistSummonMtf: 6
+    SpawnEnemy: 5
     Nothing: 10
   # Weights for adrenaline outcomes.
   adrenaline:
@@ -187,16 +202,24 @@ scp079:
   pick_seconds: 90
   # Grace period after Puppet is picked: Puppet locked in the armory, generators locked, no damage.
   grace_seconds: 90
-  puppet_base_health: 1000
-  puppet_health_per_tier: 250
-  # Generators (lives) by player count: 8+ = 2, 14+ = 3, 20+ = 4, 26+ = 5.
+  # Puppet max HP (doesn't scale with tier).
+  puppet_base_health: 500
+  # Puppet can heal itself with medical items up to this percent of its max HP. SCP-079 pings can heal it further.
+  puppet_self_heal_percent: 50
+  # HP restored per 1 aux power when SCP-079 pings the Puppet.
+  ping_heal_per_aux: 0.5
+  # When the Puppet loses a life it respawns in 079's room; both it and SCP-079 are stunned this long.
+  respawn_stun_seconds: 5
+  # Range of the Puppet's Quick Recycle keybind (server-specific settings).
+  quick_recycle_range: 2.5
+  # Generators on the map (each un-engaged one is a Puppet life) by player count: under 14 = 2, 14+ = 3, 20+ = 4, 26+ = 5. Extra generators spawn at unused HCZ generator spots.
   generator_thresholds:
   - 8
   - 14
   - 20
   - 26
-  generator_lock_after_death: 15
-  damage_taken_per_active_generator: 35
+  # Seconds generators stay blocked (and activating ones are shut off) after the Puppet loses a life.
+  generator_lock_after_death: 20
   aux_regen_per_tier:
   - 2.5
   - 4
@@ -227,6 +250,10 @@ scp079:
   hume_regen_delay: 12
 ascension:
   enabled: true
+  # Minimum players in the server for the ascension questline to be possible.
+  min_players: 12
+  # Seconds of spawn protection both Puppets get on ascension.
+  spawn_protection_seconds: 10
   # PCs to find (1 always LCZ, 1 HCZ-or-Entrance, 1 always Entrance).
   pc_count: 3
   # Number of digits in the phone's NATO code.

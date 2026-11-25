@@ -24,7 +24,7 @@ public sealed class FacilityModule : MayhemModule
     public static bool AllItems1853;
 
     private readonly HashSet<string> _escaped = new();
-    private readonly Dictionary<ReferenceHub, float> _inNukeRoom = new();
+    private readonly Dictionary<ReferenceHub, float> _inNukeRoom = new(); // seconds accumulated inside
     private readonly Dictionary<ushort, float> _pickupBorn = new();
     private float _nextCleanup;
 
@@ -92,6 +92,11 @@ public sealed class FacilityModule : MayhemModule
             if (!Rng.Chance(kv.Value)) continue;
             if (ApplyBonus(p, kv.Key)) got.Add(kv.Key);
         }
+        if (IsHalloween() && Rng.Chance(MayhemPlugin.Cfg.Spawning.HalloweenCandyChance))
+        {
+            p.GiveRandomCandy(InventorySystem.Items.ItemAddReason.StartingItem);
+            got.Add("Candy");
+        }
         if (got.Count > 0) Hud.Message(p, "<color=#88CCFF>Spawn bonus: " + string.Join(", ", got) + "</color>", 4f);
     }
 
@@ -109,7 +114,6 @@ public sealed class FacilityModule : MayhemModule
             for (int i = 0; i < 5; i++) GamblingModule.Give1853Crit(p);
             return true;
         }
-        if (p.IsInventoryFull) return false;
         if (ItemSpawner.CausalityItem != null && key != "ExtraAmmo")
         {
             ItemEngine.Give(p, ItemSpawner.CausalityItem);
@@ -130,6 +134,11 @@ public sealed class FacilityModule : MayhemModule
             _ => ItemType.None,
         };
         if (type == ItemType.None) return false;
+        if (p.IsInventoryFull)
+        {
+            Pickup.Create(type, p.Position + Vector3.up * 0.3f); // bonus dropped at your feet
+            return true;
+        }
         var item = p.AddItem(type);
         if (item is FirearmItem fa)
         {
@@ -137,6 +146,14 @@ public sealed class FacilityModule : MayhemModule
             p.AddAmmo(fa.AmmoType, 60);
         }
         return item != null;
+    }
+
+    public static bool IsHalloween()
+    {
+        var mode = MayhemPlugin.Cfg.Spawning.HalloweenMode?.ToLowerInvariant();
+        if (mode == "on") return true;
+        if (mode == "off") return false;
+        return System.DateTime.Now.Month == 10 || GameCore.Version.ActiveHoliday == MapGeneration.Holidays.HolidayType.Halloween;
     }
 
     private void OnEscaped(PlayerEscapedEventArgs ev)
@@ -173,22 +190,22 @@ public sealed class FacilityModule : MayhemModule
         var cfg = MayhemPlugin.Cfg.Effects;
         foreach (var p in PlayerExt.Alive.ToList())
         {
+            _inNukeRoom.TryGetValue(p.ReferenceHub, out var inside);
             if (p.Room == null || p.Room.Name != RoomName.HczWarhead)
             {
-                _inNukeRoom.Remove(p.ReferenceHub);
+                // Leaving resets the timer slowly.
+                if (inside > 0) _inNukeRoom[p.ReferenceHub] = Mathf.Max(0, inside - 0.25f);
                 continue;
             }
-            if (!_inNukeRoom.TryGetValue(p.ReferenceHub, out var since))
-            {
-                _inNukeRoom[p.ReferenceHub] = Time.time;
-                continue;
-            }
-            float inside = Time.time - since;
+            inside += 1f;
+            _inNukeRoom[p.ReferenceHub] = inside;
             if (inside < cfg.NukeRoomGraceSeconds) continue;
-            if (inside - cfg.NukeRoomGraceSeconds < 1.1f)
-                Hud.Message(p, "<color=#7CFF00>☢ Radiation is building up in here...</color>", 3f);
-            float rate = (p.IsSCP ? cfg.NukeRoomScpPercent : cfg.NukeRoomHumanPercent) / 5f;
-            EffectManager.Apply<Irradiated>(p, 10f, rate);
+            float over = inside - cfg.NukeRoomGraceSeconds;
+            if (over < 1.1f) Hud.Message(p, "<color=#7CFF00>☢ Radiation is building up in here...</color>", 3f);
+            float rate = p.IsSCP
+                ? cfg.NukeRoomScpPercent / 5f
+                : cfg.NukeRoomHumanPercent / 5f * Mathf.Pow(cfg.NukeRoomHumanGrowth, over);
+            EffectManager.Apply<Irradiated>(p, 10f, Mathf.Min(rate, 25f));
         }
     }
 

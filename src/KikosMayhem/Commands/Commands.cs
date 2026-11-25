@@ -205,6 +205,7 @@ public sealed class MayhemCommand : ICommand
                     response = "Ascension module not loaded.";
                     return false;
                 }
+                q.ForceAllowed = true;
                 q.TryStart();
                 response = $"Ascension stage: {q.Current}";
                 return true;

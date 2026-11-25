@@ -129,21 +129,40 @@ public sealed class GamblingModule : MayhemModule
         switch (roll)
         {
             case "ReviveOne":
+                RevivingPlayers.Start(p, 1);
+                return "Reviving a player...";
+            case "ReviveAll":
+                RevivingPlayers.Start(p, int.MaxValue);
+                return "REVIVE ALL — find a safe spot!";
+            case "ScientistSummonMtf":
+            {
+                if (p.Role != RoleTypeId.Scientist) return "Nothing happened";
+                foreach (var o in PlayerExt.Alive.Where(o => o.Team == Team.FoundationForces && o.Role != RoleTypeId.FacilityGuard && o.CanTeleport()).ToList())
+                {
+                    o.Position = p.Position;
+                    Hud.Message(o, $"<color=#88CCFF>{p.Nickname}'s SCP-500 summoned you!</color>");
+                }
+                return "Summoned every MTF to you!";
+            }
+            case "SpawnEnemy":
             {
                 var dead = Rng.Pick(PlayerExt.Spectators.ToList());
-                if (dead == null) return "Nobody to revive";
-                ReviveAs(dead, p);
-                return $"Revived {dead.Nickname}";
-            }
-            case "ReviveAll":
-            {
-                var dead = PlayerExt.Spectators.ToList();
-                foreach (var d in dead) ReviveAs(d, p);
-                Hud.MessageAll($"<color=#FFD700>{p.Nickname}'s SCP-500 revived everyone!</color>");
-                return $"REVIVE ALL ({dead.Count})";
+                if (dead == null) return "Nothing happened";
+                var enemyRole = p.Faction switch
+                {
+                    Faction.FoundationStaff => Rng.Pick(new[] { RoleTypeId.ChaosRifleman, RoleTypeId.ClassD }),
+                    Faction.FoundationEnemy => Rng.Pick(new[] { RoleTypeId.NtfPrivate, RoleTypeId.FacilityGuard }),
+                    _ => RoleTypeId.ClassD,
+                };
+                var at = p.Position;
+                dead.SetRole(enemyRole, RoleChangeReason.Respawn, RoleSpawnFlags.AssignInventory);
+                Loops.After(0.2f, () => { if (dead.Valid() && dead.IsAlive) dead.Position = at + Vector3.up * 0.3f; });
+                Hud.Message(dead, $"<color=#FF7070>{p.Nickname}'s SCP-500 summoned you as their enemy!</color>");
+                return "An enemy appeared on you!";
             }
             case "Zombie":
             {
+                if (p.Room?.Name == RoomName.Pocket) return "Nothing happened";
                 var pos = p.Position;
                 p.SetRole(RoleTypeId.Scp0492, RoleChangeReason.RemoteAdmin, RoleSpawnFlags.None);
                 Loops.After(0.15f, () =>

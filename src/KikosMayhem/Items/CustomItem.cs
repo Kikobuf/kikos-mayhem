@@ -115,6 +115,8 @@ public abstract class CustomItem
     public virtual float RegenInterval => 1f;
     /// <summary>Regenerate even when not held.</summary>
     public virtual bool RegenWhenHolstered => true;
+    /// <summary>Regen only starts after this many seconds without firing.</summary>
+    public virtual float RegenDelayAfterShot => 0f;
 
     public override string ToString() => $"{Name} [{Id}]";
 

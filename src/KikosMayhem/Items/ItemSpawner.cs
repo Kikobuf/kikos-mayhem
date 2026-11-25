@@ -158,47 +158,96 @@ public static class ItemSpawner
 }
 
 /// <summary>
-/// Custom items (and O5 / Facility Manager cards) can't be removed from the round. If they fall out of
-/// the map they're sent to SCP-106's dimension, and after a while recycled back into the facility.
+/// Custom items (and O5 / Facility Manager cards) can't be removed from the round:
+///  - thrown into a pit (outside Surface), or lost to decontamination / the warhead → sent to SCP-106's dimension,
+///    where anyone can grab them; otherwise they're recycled back to a random reachable spot after 90–240s.
+///  - any item thrown into a pit / off the map on Surface is put back on Surface.
 /// </summary>
 public static class Recycling
 {
     private static readonly HashSet<ushort> InPocket = new();
+    private static readonly HashSet<ushort> OnSurface = new();
 
-    public static void Reset() => InPocket.Clear();
+    public static void Reset()
+    {
+        InPocket.Clear();
+        OnSurface.Clear();
+    }
 
     private static bool Protected(Pickup p) =>
         ItemEngine.IsCustom(p.Serial) || p.Type is ItemType.KeycardO5 or ItemType.KeycardFacilityManager;
+
+    public static void Register()
+    {
+        LabApi.Events.Handlers.ServerEvents.LczDecontaminationStarting += OnDecontamination;
+        LabApi.Events.Handlers.WarheadEvents.Detonated += OnDetonated;
+    }
+
+    public static void Unregister()
+    {
+        LabApi.Events.Handlers.ServerEvents.LczDecontaminationStarting -= OnDecontamination;
+        LabApi.Events.Handlers.WarheadEvents.Detonated -= OnDetonated;
+    }
+
+    private static void OnDecontamination(LabApi.Events.Arguments.ServerEvents.LczDecontaminationStartingEventArgs ev) => Loops.After(1f, () => RescueFrom(FacilityZone.LightContainment));
+
+    private static void OnDetonated(LabApi.Events.Arguments.WarheadEvents.WarheadDetonatedEventArgs ev) =>
+        Loops.After(0.5f, () => RescueFrom(FacilityZone.LightContainment, FacilityZone.HeavyContainment, FacilityZone.Entrance));
+
+    private static void RescueFrom(params FacilityZone[] zones)
+    {
+        foreach (var p in Pickup.List.ToList())
+        {
+            if (p.IsDestroyed || p is Projectile || !Protected(p) || p.Type == ItemType.SCP018 || InPocket.Contains(p.Serial)) continue;
+            var room = p.Room;
+            if (room != null && zones.Contains(room.Zone)) SendToPocket(p);
+        }
+    }
 
     public static void Tick()
     {
         if (!MayhemPlugin.Cfg.Items.RecycleFromPits) return;
         foreach (var p in Pickup.List.ToList())
         {
-            if (p.IsDestroyed || p is Projectile || !Protected(p) || InPocket.Contains(p.Serial)) continue;
+            if (p.IsDestroyed || p is Projectile || InPocket.Contains(p.Serial)) continue;
             var pos = p.Position;
-            bool lost = pos.y < -2000f || (Room.GetRoomAtPosition(pos) == null && pos.y < 250f && pos.y > -1900f && FellFast(p));
-            if (!lost) continue;
-            SendToPocket(p);
+            var room = Room.GetRoomAtPosition(pos);
+            if (room?.Zone == FacilityZone.Surface) { OnSurface.Add(p.Serial); continue; }
+
+            // Fell off the map on Surface: put it back (any item).
+            if (OnSurface.Contains(p.Serial) && room == null && pos.y < 280f && pos.y > 100f)
+            {
+                var back = ItemSpawner.Scatter(Rng.Chance(50) ? ItemSpawner.GateASurface() : ItemSpawner.Exit(), 1.5f);
+                p.Position = back;
+                if (p.Rigidbody != null) p.Rigidbody.velocity = Vector3.zero;
+                continue;
+            }
+
+            if (!Protected(p)) continue;
+            bool lost = pos.y < -2000f || (room == null && pos.y < 250f && pos.y > -1900f && FellFast(p));
+            if (lost) SendToPocket(p);
         }
     }
 
     private static bool FellFast(Pickup p) => p.Rigidbody != null && p.Rigidbody.velocity.y < -12f;
 
-    private static void SendToPocket(Pickup p)
+    /// <summary>Sends a pickup to the Pocket Dimension; if nobody grabs it, it's recycled back later.</summary>
+    public static void SendToPocket(Pickup p)
     {
         var pocket = Room.Get(RoomName.Pocket).FirstOrDefault();
-        if (pocket == null) return;
+        if (pocket == null || p == null || p.IsDestroyed) return;
         InPocket.Add(p.Serial);
+        OnSurface.Remove(p.Serial);
         p.Position = pocket.Position + new Vector3(Rng.Range(-6f, 6f), 1.2f, Rng.Range(-6f, 6f));
         if (p.Rigidbody != null) p.Rigidbody.velocity = Vector3.zero;
         ushort serial = p.Serial;
-        Loops.After(MayhemPlugin.Cfg.Items.RecycleDelaySeconds, () =>
+        var cfg = MayhemPlugin.Cfg.Items;
+        Loops.After(Rng.Range(cfg.RecycleMinSeconds, Mathf.Max(cfg.RecycleMinSeconds, cfg.RecycleMaxSeconds)), () =>
         {
             InPocket.Remove(serial);
             var still = Pickup.Get(serial);
             if (still == null || still.IsDestroyed) return; // someone grabbed it
-            var spot = ItemSpawner.RandomSpot();
+            var spot = ItemSpawner.RandomSpot(Items.Defs.Teleports.SafeZones().ToArray());
             if (spot == null) return;
             still.Position = spot.Value + Vector3.up * 1.5f; // "drops from his dimension"
             if (still.Rigidbody != null) still.Rigidbody.velocity = Vector3.zero;

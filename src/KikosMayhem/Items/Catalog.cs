@@ -39,6 +39,8 @@ public static class Catalog
                 new Hellfire(), new PocketNuke(), new MayhemCoin(), new HellsReckoning(),
                 // Admin (rainbow)
                 new LiveDuckReaction(), new Ultimate500(), new OverchargedAdrenaline(), new Elixir(), new MitzeysScream(),
+                // Newer additions
+                new Mitosis(), new JestersHat(),
             };
             foreach (var i in items) ItemEngine.Define(i);
         }

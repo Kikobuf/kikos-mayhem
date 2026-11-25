@@ -19,7 +19,7 @@ public sealed class MayhemPlugin : Plugin<MayhemConfig>
     public override string Name => "KikosMayhem";
     public override string Description => "Kiko's Mayhem — chaotic custom items, reworked SCPs, SCP-079's Puppet and global events.";
     public override string Author => "Kikobuf";
-    public override Version Version => new(1, 0, 0);
+    public override Version Version => new(1, 1, 0);
     public override Version RequiredApiVersion => new(1, 1, 7);
 
     private CoroutineHandle _fast, _slow, _second;
@@ -48,6 +48,9 @@ public sealed class MayhemPlugin : Plugin<MayhemConfig>
         Combat.Register();
         Combat.DyingHooks.Add(ItemEngine.OwnerDying);
         ItemEngine.Register();
+        Recycling.Register();
+        MayhemSettings.Register();
+        Tazed.Register();
         Modules.Register();
 
         ServerEvents.WaitingForPlayers += OnWaiting;
@@ -71,6 +74,9 @@ public sealed class MayhemPlugin : Plugin<MayhemConfig>
         PlayerEvents.ChangedRole -= OnChangedRole;
         Modules.Unregister();
         ItemEngine.Unregister();
+        Recycling.Unregister();
+        MayhemSettings.Unregister();
+        Tazed.Unregister();
         Combat.Unregister();
         Disguise.Unregister();
         ResetRound();
@@ -134,6 +140,7 @@ public sealed class MayhemPlugin : Plugin<MayhemConfig>
         ItemEngine.Reset();
         ItemSpawner.Reset();
         Recycling.Reset();
+        Items.Defs.Decoys.Reset();
         Audio.Music.Reset();
         Modules.Reset();
     }

@@ -80,6 +80,7 @@ public static class SelfTest
     private static IEnumerator<float> Routine()
     {
         Log("starting");
+        Round.IsLocked = true; // keep the round alive while dummies die
         var ds = Dummies;
         if (ds.Count < 3)
         {
@@ -223,7 +224,15 @@ public static class SelfTest
         yield return Timing.WaitForSeconds(0.3f);
         Log($"SCP hits puppet: HP {hpBefore}->{puppet.Health} (expect unchanged: same side)");
 
+        // Lives: generators adjusted for player count; dying spends one and respawns the Puppet stunned.
+        Log($"generators on map: {Scp079.GeneratorSpawner.All.Count()} lives={pm?.Lives}/{pm?.MaxLives}");
+        puppet.Kill("selftest");
+        yield return Timing.WaitForSeconds(2f);
+        Log($"after puppet death: alive={puppet.IsAlive} role={puppet.Role} hp={puppet.Health}/{puppet.MaxHealth} room={puppet.Room?.Name} lives={pm?.Lives}/{pm?.MaxLives} 079 stunned={(pm != null && Time.time < pm.ComputerStunnedUntil)}");
+        yield return Timing.WaitForSeconds(5f);
+
         var quest = Ascension.AscensionQuest.Instance;
+        if (quest != null) quest.ForceAllowed = true;
         quest?.TryStart();
         yield return Timing.WaitForSeconds(1f);
         for (int step = 0; step < 8 && quest != null; step++)
@@ -244,6 +253,7 @@ public static class SelfTest
         Log("mayhem protocol started");
 
         Log("finished");
+        Round.IsLocked = false;
         _running = false;
     }
 }

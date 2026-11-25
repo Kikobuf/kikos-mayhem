@@ -92,9 +92,11 @@ public sealed class WarpCoin : CustomItem
     public override string Name => "Warp Coin";
     public override Rarity Rarity => Rarity.Rare;
     public override ItemType BaseType => ItemType.Coin;
-    public override string Description => "50%: you teleport to someone random. 50%: someone random teleports to you (Puppet included, never SCPs). 30s cooldown.";
+    public override string Description => "50%: you teleport to someone random. 50%: someone random teleports to you (never SCPs or Puppet). 30s cooldown.";
     public override string UpgradeTo => "hotswap_coin";
     public override float UpgradeChance => 25f;
+
+    public override bool PuppetBlocked => true;
 
     public override bool OnFlipping(Player p, CoinItem coin) =>
         !ItemEngine.OnCooldown(p, coin.Serial, "warp", MayhemPlugin.Cfg.Items.WarpCoinCooldown);
@@ -102,7 +104,7 @@ public sealed class WarpCoin : CustomItem
     public override void OnFlipped(Player p, CoinItem coin, bool tails)
     {
         if (!p.CanTeleport()) return;
-        var target = Rng.Pick(PlayerExt.Alive.Where(o => o != p && !o.IsSCP && o.Role != RoleTypeId.Scp079 && o.CanTeleport()).ToList());
+        var target = Rng.Pick(PlayerExt.Alive.Where(o => o != p && !o.IsSCP && !o.IsPuppet() && o.Role != RoleTypeId.Scp079 && o.CanTeleport()).ToList());
         if (target == null) { Msg(p, "Nobody to warp to"); return; }
         if (Rng.Chance(50))
         {
@@ -338,6 +340,7 @@ public sealed class Tazer : CustomItem
     public override void OnHit(Player attacker, Player target, PlayerHurtingEventArgs ev)
     {
         if (!target.IsEnemyOf(attacker)) { ev.IsAllowed = false; return; }
+        Combat.SetDamage(ev, 1f);
         EffectManager.Apply<Tazed>(target, MayhemPlugin.Cfg.Effects.TazedSeconds);
     }
 }

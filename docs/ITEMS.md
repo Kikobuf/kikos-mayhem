@@ -1,12 +1,14 @@
-# Custom items
+# Custom items (61)
 
-Every custom item glows with its rarity aura when dropped, and shows its name + description at the bottom of your screen while held.
+Every custom item glows with its rarity aura when dropped. While you hold one, its name, description, live cooldown and next ammo regen show at the bottom of your screen.
 
-Give one with `mayhem give <player|me|all> <id>` (Remote Admin or server console). Disable any item by adding its id to `items.disabled` in the config.
+Give one with `mayhem give <player|me|all> <id>` (Remote Admin or server console). To disable an item, add its id to `items.disabled` in the config.
 
-**SCP-914 upgrades:** put an upgradable item through **Very Fine** to roll its upgrade chance (fail = "Try again", the item is kept). Key ↔ Lock to the City swap on **1:1**. Custom items are never destroyed or turned into vanilla items by 914.
+**SCP-914 upgrades:** put an upgradable item through **Very Fine** to roll its upgrade chance. A failed roll shows "Try again" and you keep the item. Key ↔ Lock to the City swap on **1:1**. 914 never destroys a custom item or turns it into a vanilla item.
 
-**Admin (rainbow)** items never spawn — the only way to get one is to kill an SCP with **Hell's Reckoning**.
+**Admin (rainbow)** items never spawn naturally. The only way to get one is to kill an SCP with **Hell's Reckoning**.
+
+**Puppet** can't pick up custom items. Touching one sends it to the Pocket Dimension instead (see the README).
 
 ## Common (🟢 Green aura)
 
@@ -28,11 +30,12 @@ Give one with `mayhem give <player|me|all> <id>` (Remote Admin or server console
 
 | Id | Name | Base item | What it does | Upgrade |
 |---|---|---|---|---|
+| `jesters_hat` | Jester's Hat | SCP268 | Spawns a killable decoy of you, holding the last item you held. You get 10 seconds of invisibility and +10% speed. |  |
 | `accelerator` | Accelerator | GunAK | 40% chance to gain +1% movement speed on hit. | → `sonic_surge` on Very Fine (25%) |
 | `pink_extract` | Pink Extract | Adrenaline | Gives you the Sinkhole effect... then you explode, dealing 1000+ damage to everyone in range. |  |
 | `vampirism` | Vampirism | Adrenaline | Awakens the demon inside you 😈. 35s timer: every kill gives +4% speed, +5% crit chance, 20 AHP and more time. When it runs out you drop to 1 HP. |  |
 | `turbo_boost` | Turbo Boost | Adrenaline | 15s of SCP-207 x255, +255% movement speed and negative effect immunity (stacks). |  |
-| `warp_coin` | Warp Coin | Coin | 50%: you teleport to someone random. 50%: someone random teleports to you (Puppet included, never SCPs). 30s cooldown. | → `hotswap_coin` on Very Fine (25%) |
+| `warp_coin` | Warp Coin | Coin | 50%: you teleport to someone random. 50%: someone random teleports to you (never SCPs or Puppet). 30s cooldown. | → `hotswap_coin` on Very Fine (25%) |
 | `autovest` | Autovest | ArmorHeavy | While worn, your guns reload themselves (even the one you're holding). |  |
 | `mirage` | Mirage | GunRevolver | Killing someone disguises you as their role and gives 50 hume shield. Disguise lasts until the shield breaks. Attackers don't get hitmarkers. |  |
 | `bye_bye_machine` | Bye Bye Machine | ParticleDisruptor | Burst: sends the target to a nearby room. Disruptor: sends them to another zone. Charged shot on an SCP: 50% another zone, else a random room. 3 shots, +1 every 20s. |  |
@@ -59,6 +62,7 @@ Give one with `mayhem give <player|me|all> <id>` (Remote Admin or server console
 | `dubstep_gun` | Dubstep Gun | MicroHID | Infinite charge. Using it drains your health and builds Overvolt (drains faster). Kills remove stacks and give AHP. 60 stacks = you can't handle the dubstep and explode. |  |
 | `recursive_destiny_coin` | Recursive Destiny Coin | Coin | 75%: revives a dead player as your class next to you. 25%: kills you. One use. |  |
 | `huginn_muninn` | Huginn and Muninn | SCP1344 | Gives Eyes Of Odin: tracks ALL enemies in the facility and shows the nearest one. |  |
+| `mitosis` | Mitosis | Adrenaline | Spawns an imperfect molecular copy of you (a dead player) with some minor defects. The copy must stay close to you or it destabilizes and falls apart. Its damage scales with distance from you (0.5x close → 1.25x far). |  |
 
 ## Legendary (🟡 Yellow aura)
 
@@ -66,7 +70,7 @@ Give one with `mayhem give <player|me|all> <id>` (Remote Admin or server console
 |---|---|---|---|---|
 | `crimson_echo` | Crimson Echo | GunCOM15 | Deals 200 TRUE damage (ignores AHP, hume shield and damage reduction) to enemies, and 40 damage to you. Never crits. |  |
 | `grenade_launcher` | Grenade Launcher | GunRevolver | The area where your bullet lands explodes. Regenerates 1 shot every 30s. | → `rolling_thunder` on Very Fine (25%) |
-| `minigun` | Minigun | GunCom45 | COM-45 with 200 rounds that quickly regenerate. 15 damage per shot with 70% penetration. |  |
+| `minigun` | Minigun | GunCom45 | COM-45 with 200 rounds that quickly regenerate. 15 damage per shot with 75% armor penetration. |  |
 | `suicide_vest` | Suicide Vest | ArmorCombat | You explode when you die, dealing around 1000 damage to everyone nearby. |  |
 | `scp_18018` | SCP-018018 | GrenadeHE | On explosion releases 18 SCP-018 balls. Teammates are safe from them for the first 10s. |  |
 | `real_500` | Real 500 | SCP500 | Guaranteed \"revive all\": every spectator respawns as your class. (Revives nobody if Puppet uses it.) |  |
@@ -78,7 +82,7 @@ Give one with `mayhem give <player|me|all> <id>` (Remote Admin or server console
 |---|---|---|---|---|
 | `scrooge_grenade` | Scrooge Grenade | GrenadeHE | After the explosion, 5 custom items spawn (any rarity except Admin). |  |
 | `sonic_surge` | Sonic Surge | GunAK | Every hit on an enemy gives you +2% movement speed. |  |
-| `hotswap_coin` | Hotswap Coin | Coin | Swap positions with 1 random player. Doesn't work on SCPs (except Puppet). |  |
+| `hotswap_coin` | Hotswap Coin | Coin | Swap positions with 1 random player. Doesn't work on SCPs or Puppet. |  |
 | `realest_207` | Realest SCP-207 | SCP207 | 4x SCP-207 and +100% movement speed. |  |
 | `paladins_elixir` | Paladin's Elixir | AntiSCP207 | 2x SCP-207? and 87.5% damage reduction to ALL damage. (Weakens as Puppet takes damage.) |  |
 | `rolling_thunder` | Rolling Thunder | ? | 4-shot revolver |  |
@@ -106,4 +110,4 @@ Give one with `mayhem give <player|me|all> <id>` (Remote Admin or server console
 
 | Id | Name | Base item | What it does |
 |---|---|---|---|
-| `tooth_and_nail` | Tooth and Nail | GunSCP127 | Puppet's exclusive SCP-127. Can't spawn or be dropped. Tier follows SCP-079 (079 T3 → tier 2, T5 → tier 3): 50/60/70% penetration and 50/100/150 hume shield. |
+| `tooth_and_nail` | Tooth and Nail | GunSCP127 | Puppet's exclusive SCP-127. Can't spawn or be dropped. Its tier follows SCP-079's (079 T3 → tier 2, T5 → tier 3): 50/60/70% penetration and 50/100/150 hume shield. Regenerates 3 rounds/s after 4s without firing. |

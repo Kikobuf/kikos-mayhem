@@ -82,9 +82,13 @@ public sealed class AscensionQuest : MayhemModule
         UpdateObjectiveHud();
     }
 
+    /// <summary>Admin/test override for the minimum player count.</summary>
+    public bool ForceAllowed;
+
     public void TryStart()
     {
         if (!MayhemPlugin.Cfg.Ascension.Enabled || Current != Stage.Inactive) return;
+        if (Player.ReadyList.Count(p => !p.IsHost && !p.IsDummy) < MayhemPlugin.Cfg.Ascension.MinPlayers && !ForceAllowed) return;
         if (Pm == null || !Pm.Picked || !KikosMayhem.Scp079.PuppetManager.AllPuppets.Any() || KikosMayhem.Scp079.PuppetManager.Computer == null) return;
         Current = Stage.ServerRack;
         SpawnServerRack();

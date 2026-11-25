@@ -70,6 +70,8 @@ public static class Combat
             SuppressCrit = false;
             var target = ev.Player;
             var attacker = ev.Attacker;
+            if (!target.Valid()) return;
+            if (attacker != null && !attacker.Valid()) attacker = null;
 
             foreach (var h in Pre)
             {
@@ -139,6 +141,7 @@ public static class Combat
         try
         {
             EffectManager.RemoveAll(ev.Player);
+            Items.Defs.Decoys.OnDeath(ev.Player);
             var killer = ev.Attacker;
             if (killer != null && killer != ev.Player)
             {

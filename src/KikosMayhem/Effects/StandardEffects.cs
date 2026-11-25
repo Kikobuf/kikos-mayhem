@@ -135,15 +135,35 @@ public sealed class Tazed : CustomEffect
     public override void OnApplied()
     {
         float d = Remaining > 0 ? Remaining : 3f;
-        Owner.EnableEffect<Ensnared>(1, d);
-        Owner.EnableEffect<Concussed>(1, d);
-        Owner.EnableEffect<Blurred>(1, d);
+        Owner.EnableEffect<Slowness>(80, d);
         Owner.CurrentItem = null;
     }
 
     public override void OnRemoved()
     {
-        Owner.DisableEffect<Ensnared>();
+        if (Owner.IsAlive) Owner.DisableEffect<Slowness>();
+    }
+
+    /// <summary>Blocks equipping, using, shooting and throwing while Tazed.</summary>
+    public static void Register()
+    {
+        LabApi.Events.Handlers.PlayerEvents.ChangingItem += Block;
+        LabApi.Events.Handlers.PlayerEvents.UsingItem += Block;
+        LabApi.Events.Handlers.PlayerEvents.ShootingWeapon += Block;
+        LabApi.Events.Handlers.PlayerEvents.ThrowingProjectile += Block;
+    }
+
+    public static void Unregister()
+    {
+        LabApi.Events.Handlers.PlayerEvents.ChangingItem -= Block;
+        LabApi.Events.Handlers.PlayerEvents.UsingItem -= Block;
+        LabApi.Events.Handlers.PlayerEvents.ShootingWeapon -= Block;
+        LabApi.Events.Handlers.PlayerEvents.ThrowingProjectile -= Block;
+    }
+
+    private static void Block<T>(T ev) where T : LabApi.Events.Arguments.Interfaces.IPlayerEvent, LabApi.Events.Arguments.Interfaces.ICancellableEvent
+    {
+        if (EffectManager.Has<Tazed>(ev.Player)) ev.IsAllowed = false;
     }
 }
 

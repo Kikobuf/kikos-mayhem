@@ -40,7 +40,9 @@ public sealed class ItemsConfig
 
     [Description("Custom items thrown into a pit go to SCP-106's dimension and are later recycled into the facility (also O5 / Facility Manager cards).")]
     public bool RecycleFromPits { get; set; } = true;
-    public float RecycleDelaySeconds { get; set; } = 90f;
+    [Description("Recycled items come back from the Pocket Dimension to a random facility spot after this many seconds (random between min and max).")]
+    public float RecycleMinSeconds { get; set; } = 90f;
+    public float RecycleMaxSeconds { get; set; } = 240f;
 
     public float SkinwalkerRevealSeconds { get; set; } = 3f;
     public float RadianceHealPerSecond { get; set; } = 2f;
@@ -69,6 +71,10 @@ public sealed class ItemsConfig
     public float PinpointerDamage { get; set; } = 200f;
     public float PeacemakerScpHeal { get; set; } = 200f;
     public float PeacemakerSelfCostPercent { get; set; } = 40f;
+    [Description("Mitosis: how far the copy can be from its host before it destabilizes.")]
+    public float MitosisMaxRange { get; set; } = 25f;
+    [Description("Jester's Hat: seconds before the decoy vanishes.")]
+    public float JestersHatDecoySeconds { get; set; } = 30f;
 }
 
 public sealed class SpawnConfig
@@ -120,6 +126,10 @@ public sealed class SpawnConfig
         ["OverloadedCom45"] = 0.05f,
     };
 
+    [Description("Halloween: chance (percent) to spawn with a random candy. 'halloween_mode': Auto (October or the game's Halloween event), On, Off.")]
+    public float HalloweenCandyChance { get; set; } = 30f;
+    public string HalloweenMode { get; set; } = "Auto";
+
     [Description("Remove dropped items and ragdolls older than this many seconds (0 = never).")]
     public float CleanupAfterSeconds { get; set; } = 600f;
 }
@@ -132,7 +142,11 @@ public sealed class EffectsConfig
     public float TazedSeconds { get; set; } = 3f;
 
     [Description("Nuke room radiation: seconds you can stay before getting Irradiated, then it keeps stacking.")]
-    public float NukeRoomGraceSeconds { get; set; } = 30f;
+    public float NukeRoomGraceSeconds { get; set; } = 20f;
+    [Description("Humans: radiation grows exponentially the longer you stay (multiplier per second inside past the grace).")]
+    public float NukeRoomHumanGrowth { get; set; } = 1.12f;
+    [Description("Seconds the Reviving Players effect (SCP-500 revives) waits for a safe spot before fizzling.")]
+    public float RevivingPlayersSeconds { get; set; } = 30f;
     public float NukeRoomHumanPercent { get; set; } = 1f;
     public float NukeRoomScpPercent { get; set; } = 0.1f;
 
@@ -161,6 +175,8 @@ public sealed class GamblingConfig
         ["TeleportGuardsToClassD"] = 6f,
         ["CureZombies"] = 8f,
         ["TeleportToScp"] = 6f,
+        ["ScientistSummonMtf"] = 6f,
+        ["SpawnEnemy"] = 5f,
         ["Nothing"] = 10f,
     };
 
@@ -240,13 +256,21 @@ public sealed class Scp079Config
     [Description("Grace period after Puppet is picked: Puppet locked in the armory, generators locked, no damage.")]
     public float GraceSeconds { get; set; } = 90f;
 
-    public float PuppetBaseHealth { get; set; } = 1000f;
-    public float PuppetHealthPerTier { get; set; } = 250f;
+    [Description("Puppet max HP (doesn't scale with tier).")]
+    public float PuppetBaseHealth { get; set; } = 500f;
+    [Description("Puppet can heal itself with medical items up to this percent of its max HP. SCP-079 pings can heal it further.")]
+    public float PuppetSelfHealPercent { get; set; } = 50f;
+    [Description("HP restored per 1 aux power when SCP-079 pings the Puppet.")]
+    public float PingHealPerAux { get; set; } = 0.5f;
+    [Description("When the Puppet loses a life it respawns in 079's room; both it and SCP-079 are stunned this long.")]
+    public float RespawnStunSeconds { get; set; } = 5f;
+    [Description("Range of the Puppet's Quick Recycle keybind (server-specific settings).")]
+    public float QuickRecycleRange { get; set; } = 2.5f;
 
-    [Description("Generators (lives) by player count: 8+ = 2, 14+ = 3, 20+ = 4, 26+ = 5.")]
+    [Description("Generators on the map (each un-engaged one is a Puppet life) by player count: under 14 = 2, 14+ = 3, 20+ = 4, 26+ = 5. Extra generators spawn at unused HCZ generator spots.")]
     public List<int> GeneratorThresholds { get; set; } = new() { 8, 14, 20, 26 };
-    public float GeneratorLockAfterDeath { get; set; } = 15f;
-    public float DamageTakenPerActiveGenerator { get; set; } = 35f;
+    [Description("Seconds generators stay blocked (and activating ones are shut off) after the Puppet loses a life.")]
+    public float GeneratorLockAfterDeath { get; set; } = 20f;
 
     public List<float> AuxRegenPerTier { get; set; } = new() { 2.5f, 4f, 6f, 8.5f, 11f };
 
@@ -273,6 +297,10 @@ public sealed class Scp079Config
 public sealed class AscensionConfig
 {
     public bool Enabled { get; set; } = true;
+    [Description("Minimum players in the server for the ascension questline to be possible.")]
+    public int MinPlayers { get; set; } = 12;
+    [Description("Seconds of spawn protection both Puppets get on ascension.")]
+    public float SpawnProtectionSeconds { get; set; } = 10f;
     [Description("PCs to find (1 always LCZ, 1 HCZ-or-Entrance, 1 always Entrance).")]
     public int PcCount { get; set; } = 3;
     [Description("Number of digits in the phone's NATO code.")]

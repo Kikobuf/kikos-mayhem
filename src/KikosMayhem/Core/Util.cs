@@ -105,9 +105,9 @@ public static class PlayerExt
 
     public static bool IsScpOrPuppet(this Player p) => p.Valid() && (p.IsSCP || p.IsPuppet());
 
-    public static IEnumerable<Player> Alive => Player.ReadyList.Where(p => p.IsAlive);
+    public static IEnumerable<Player> Alive => Player.ReadyList.Where(p => p.IsAlive && !Items.Defs.Decoys.IsDecoy(p));
 
-    public static IEnumerable<Player> AliveHumans => Player.ReadyList.Where(p => p.IsAliveHuman());
+    public static IEnumerable<Player> AliveHumans => Player.ReadyList.Where(p => p.IsAliveHuman() && !Items.Defs.Decoys.IsDecoy(p));
 
     public static IEnumerable<Player> Spectators => Player.ReadyList.Where(p => !p.IsAlive && p.Role != RoleTypeId.Overwatch && !p.IsHost);
 
