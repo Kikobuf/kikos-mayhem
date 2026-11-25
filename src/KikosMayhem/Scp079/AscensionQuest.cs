@@ -37,6 +37,8 @@ public sealed class AscensionQuest : MayhemModule
     public static readonly string[] Nato = { "ALPHA", "BRAVO", "CHARLIE", "DELTA", "ECHO", "FOXTROT", "GOLF", "HOTEL", "IMMINENT", "JUILLIET" };
 
     private string _code = "";
+    private float _callEnds;
+    private Vector3 _phonePos;
     private string _typed = "";
     private readonly List<AdminToy> _props = new();
     private readonly List<SpeakerToy> _sounds = new();
@@ -61,6 +63,7 @@ public sealed class AscensionQuest : MayhemModule
     {
         Current = Stage.Inactive;
         _code = _typed = "";
+        _callEnds = 0;
         _props.Clear();
         _sounds.Clear();
         _pcs.Clear();
@@ -308,15 +311,47 @@ public sealed class AscensionQuest : MayhemModule
         var pc = KikosMayhem.Scp079.PuppetManager.Computer;
         if (pc != null) Hud.Message(pc, $"The phone is in {room.Name}", 12f);
 
+        var phonePos = _phonePos = floor + Vector3.up;
         Button(floor + Vector3.up * 1f, rot, new Vector3(0.8f, 0.8f, 0.8f), 1.5f, p =>
         {
-            if (Current != Stage.Phone || !PuppetOnly(p)) return;
-            string words = string.Join(" ", _code.Select(c => Nato[c - '0']));
-            StopSounds();
-            ClearProps();
-            StartKeypad();
-            RefreshDisplay();
+            if (Current is not (Stage.Phone or Stage.Keypad) || !PuppetOnly(p)) return;
+            if (Current == Stage.Phone)
+            {
+                StopSounds(); // stop ringing
+                StartKeypad();
+                RefreshDisplay();
+            }
+            PlayCall(phonePos, p); // answering plays the call; pressing it again during the keypad stage replays it
         });
+    }
+
+    /// <summary>
+    /// The phone call: a voice reads the code in NATO words, twice. The code is only given by voice;
+    /// the bottom-middle panel just shows the digits typed on the keypad.
+    /// </summary>
+    private void PlayCall(Vector3 pos, Player listener)
+    {
+        if (Time.time < _callEnds) return;
+        var digits = _code.Select(c => "nato_" + c).ToList();
+        var lines = new List<string> { "phone_pickup", "phone_intro" };
+        lines.AddRange(digits);
+        lines.Add("phone_repeat");
+        lines.AddRange(digits);
+        lines.Add("phone_outro");
+        lines.Add("phone_hangup");
+        var clip = Audio.Clips.Concat(lines, 0.45f);
+        if (clip == null)
+        {
+            // Voice clips missing (shouldn't happen, they ship in the DLL): fall back to text so the quest isn't stuck.
+            LabApi.Features.Console.Logger.Warn("[Mayhem] phone voice clips missing; showing the code as text instead.");
+            Hud.Message(listener, "☎ " + string.Join(" ", _code.Select(c => Nato[c - '0'])), 15f);
+            _callEnds = Time.time + 3f;
+            return;
+        }
+        _callEnds = Time.time + clip.Length / 48000f;
+        var sp = Audio.Sfx.PlayClip(clip, pos, MayhemPlugin.Cfg.Ascension.PhoneVoiceRange);
+        if (sp != null) _sounds.Add(sp);
+        Hud.Message(listener, "<color=#00FFFF>☎ Listen closely...</color>", 4f);
     }
 
     // ───────── 4. keypad ─────────
@@ -365,7 +400,7 @@ public sealed class AscensionQuest : MayhemModule
             Text(pos - fwd * 0.015f, rot * Quaternion.Euler(0, 180, 0), key, 0.035f);
             Button(pos, rot, new Vector3(0.11f, 0.09f, 0.1f), 0f, p => Press(p, key));
         }
-        Tell("<color=#00FFFF>Decode the phone's code and enter it on the keypad in the Nuke Room.</color> (or stand next to it and type <b>.code 1234</b> in the console)", 10f);
+        Tell("<color=#00FFFF>Listen to the call, then enter the code on the keypad in the Nuke Room.</color> Press the phone again to replay it. (At the keypad you can also type <b>.code 123456789</b> in the console.)", 10f);
     }
 
     private void Press(Player p, string key)
@@ -390,14 +425,13 @@ public sealed class AscensionQuest : MayhemModule
         string.Join(" ", Enumerable.Range(0, Mathf.Max(_code.Length, _typed.Length)).Select(i => i < _typed.Length ? _typed[i].ToString() : "_"));
 
     /// <summary>
-    /// Bottom-middle panel for the Puppet (and SCP-079) once the phone has been answered: the code as NATO words,
-    /// and underneath it the digits typed on the keypad so far, so you can check it matches before pressing OK.
+    /// Bottom-middle panel for the Puppet (and SCP-079) once the phone has been answered: one slot per digit
+    /// that fills in as the keypad is pressed, so you can check it against the call before pressing OK.
     /// </summary>
     private void ShowCodePanel()
     {
         if (Current != Stage.Keypad || _code.Length == 0) return;
-        string words = string.Join("  ", _code.Select(c => Nato[c - '0']));
-        string text = $"<color=#FFD700>☎ {words}</color>\n<size=26><color=#00FF66><b>{Slots()}</b></color></size>";
+        string text = $"<size=26><color=#00FF66><b>{Slots()}</b></color></size>";
         foreach (var p in KikosMayhem.Scp079.PuppetManager.AllPuppets) Hud.SetInfo(p, "code", text, 1.5f, -1);
         var pc = KikosMayhem.Scp079.PuppetManager.Computer;
         if (pc != null) Hud.SetInfo(pc, "code", text, 1.5f, -1);
@@ -417,6 +451,7 @@ public sealed class AscensionQuest : MayhemModule
         if (code == _code)
         {
             Audio.Sfx.Play("keypad_accept", _keypadPos, 10f);
+            StopSounds(); // hang up the call if it's still playing
             ClearProps();
             StartRecontainment();
             return true;
@@ -424,6 +459,7 @@ public sealed class AscensionQuest : MayhemModule
         Audio.Sfx.Play("keypad_deny", _keypadPos, 10f);
         Hud.MessageAll("<color=#FF0000>INCORRECT CODE — ALPHA WARHEAD DETONATION</color>", 6f);
         Current = Stage.Done;
+        StopSounds();
         ClearProps();
         NukeFacility(p);
         return false;
@@ -548,7 +584,7 @@ public sealed class AscensionQuest : MayhemModule
             Stage.ServerRack => "Objective: find the humming server rack (Server Room, bottom corner)",
             Stage.Pcs => $"Objective: access the terminals ({_pcs.Count(x => x.done)}/{_pcs.Count})",
             Stage.Phone => "Objective: answer the ringing phone in Entrance Zone",
-            Stage.Keypad => "Objective: enter the decoded code on the Nuke Room keypad — a wrong code nukes the facility",
+            Stage.Keypad => "Objective: enter the code from the phone call on the Nuke Room keypad (press the phone to replay it). A wrong code nukes the facility!",
             Stage.Recontainment => "Objective: <color=#FF4040>RUN to SCP-079's room</color>",
             _ => null,
         };
@@ -572,9 +608,12 @@ public sealed class AscensionQuest : MayhemModule
                 StartPhone();
                 break;
             case Stage.Phone:
-                StopSounds(); ClearProps();
+                StopSounds();
                 LabApi.Features.Console.Logger.Info("[SelfTest] phone code: " + string.Join(" ", _code.Select(c => Nato[c - '0'])) + $" = {_code}");
                 StartKeypad();
+                RefreshDisplay();
+                PlayCall(_phonePos, puppet);
+                LabApi.Features.Console.Logger.Info($"[SelfTest] phone call playing: {(_callEnds - Time.time):F1}s, speakers={_sounds.Count}");
                 break;
             case Stage.Keypad:
                 puppet.Position = _keypadPos;

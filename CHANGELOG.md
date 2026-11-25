@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.3.0: the phone talks
+- The phone now rings with real audio, and answering it plays a call: a voice reads the code in NATO words, twice. Press the phone again to replay it.
+- The code panel only shows the digits typed on the keypad. The NATO words are given by voice only.
+- Built-in sounds for the whole ascension (phone, voice lines, keypad, PCs, server rack), embedded in the DLL. A same-named `.wav` in the `audio` folder overrides them.
+- New config: `phone_voice_range` (default 12 m).
+
 ## 1.2.0: Ascension polish
 - The three ascension PCs glow blue.
 - The phone code is 9 digits by default and random every round. Existing servers keep their old `code_length` in config.yml; set it to 9 to match.

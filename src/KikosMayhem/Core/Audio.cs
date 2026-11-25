@@ -1,3 +1,4 @@
+using System.Linq;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -31,6 +32,9 @@ public static class Clips
         string path = Path.Combine(Folder, slot + ".wav");
         if (!File.Exists(path))
         {
+            // Built-in sounds (phone voice lines, ascension SFX) ship inside the DLL; a file in the folder overrides them.
+            var builtIn = LoadEmbedded(slot);
+            if (builtIn != null) { Cache[slot] = builtIn; return builtIn; }
             Missing.Add(slot);
             return null;
         }
@@ -53,6 +57,41 @@ public static class Clips
         Cache.Clear();
         Missing.Clear();
     }
+
+    private static float[] LoadEmbedded(string slot)
+    {
+        try
+        {
+            using var s = typeof(Clips).Assembly.GetManifestResourceStream("KikosMayhem.Audio." + slot + ".wav");
+            return s == null ? null : Wav.Load(s);
+        }
+        catch (Exception e)
+        {
+            Logger.Warn($"[Mayhem] couldn't load built-in audio '{slot}': {e.Message}");
+            return null;
+        }
+    }
+
+    /// <summary>Joins clips back to back with a gap between them. Null if any clip is missing.</summary>
+    public static float[] Concat(IEnumerable<string> slots, float gapSeconds)
+    {
+        var parts = new List<float[]>();
+        foreach (var slot in slots)
+        {
+            var c = Get(slot);
+            if (c == null) return null;
+            parts.Add(c);
+        }
+        int gap = (int)(gapSeconds * 48000);
+        var res = new float[parts.Sum(c => c.Length) + gap * Math.Max(parts.Count - 1, 0)];
+        int pos = 0;
+        foreach (var c in parts)
+        {
+            Array.Copy(c, 0, res, pos, c.Length);
+            pos += c.Length + gap;
+        }
+        return res;
+    }
 }
 
 internal static class Wav
@@ -61,7 +100,13 @@ internal static class Wav
 
     public static float[] Load(string path)
     {
-        using var br = new BinaryReader(File.OpenRead(path));
+        using var f = File.OpenRead(path);
+        return Load(f);
+    }
+
+    public static float[] Load(Stream stream)
+    {
+        using var br = new BinaryReader(stream);
         if (new string(br.ReadChars(4)) != "RIFF") throw new InvalidDataException("not a RIFF file");
         br.ReadInt32();
         if (new string(br.ReadChars(4)) != "WAVE") throw new InvalidDataException("not a WAVE file");
@@ -136,8 +181,10 @@ internal static class Speakers
 public static class Sfx
 {
     public static SpeakerToy Play(string slot, Vector3 position, float maxDistance = 25f, bool loop = false)
+        => PlayClip(Clips.Get(slot), position, maxDistance, loop);
+
+    public static SpeakerToy PlayClip(float[] clip, Vector3 position, float maxDistance = 25f, bool loop = false)
     {
-        var clip = Clips.Get(slot);
         if (clip == null) return null;
         var sp = SpeakerToy.Create(position);
         sp.ControllerId = Speakers.NextId();

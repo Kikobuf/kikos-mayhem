@@ -112,9 +112,9 @@ Crit chance and crit damage stack from SCP-1853, Criti Cola, Vampirism and more.
 ### The Ascension (079 tier 5, 12+ players)
 1. A **server rack** on the bottom floor of the Server Room starts humming. The Puppet interacts with it.
 2. **Three PCs** come online, glowing blue so they're easy to spot: one in Light Containment, one in Heavy or Entrance, and one in Entrance. The Puppet uses all three.
-3. A **phone rings** in Entrance. Answering it shows a new random 9-digit code in NATO words (different every round; length set by `code_length`). The code stays in a panel at the bottom middle of the Puppet's and SCP-079's screens:
+3. A **phone rings** in Entrance. Answering it plays a call where a voice reads a new random 9-digit code in NATO words, twice (different every round; length set by `code_length`). The code is only given by voice, so listen closely. Pressing the phone again replays the call:
    `0 ALPHA · 1 BRAVO · 2 CHARLIE · 3 DELTA · 4 ECHO · 5 FOXTROT · 6 GOLF · 7 HOTEL · 8 IMMINENT · 9 JUILLIET`
-4. The Puppet decodes it and types it into the **keypad in the Nuke Room**. Each digit pressed fills in a slot under the NATO words, so you can check it matches before pressing OK. Typing `.code 123456789` in the console while standing at the keypad also works.
+4. The Puppet decodes it and types it into the **keypad in the Nuke Room**. A panel at the bottom middle of the Puppet's and SCP-079's screens shows one slot per digit, and each key pressed fills in the next slot, so you can check it before pressing OK. Typing `.code 123456789` in the console while standing at the keypad also works.
    **A wrong code detonates the Alpha Warhead instantly.** Everyone in the facility dies; anyone on Surface survives.
 5. The **Recontainment Protocol** starts: the Puppet must run to SCP-079's room and can't be teleported on the way.
 6. **Ascension:** SCP-079 becomes a second Puppet, and both Puppets get 10s of spawn protection. The new Puppet can't be healed, but regenerates fast after a few seconds without taking damage.
@@ -166,7 +166,9 @@ Admin commands need the `GivingItems` RA permission. You can also alias them as 
 
 ## Music and sound effects (optional)
 
-The mode runs fine with no audio. To add sound, drop **16-bit PCM `.wav`** files (any sample rate, mono or stereo) into the `audio` folder next to the config, named after the slot:
+The phone call's voice lines and the ascension sound effects (`phone_ring`, `phone_pickup`, `phone_intro`, `nato_0`–`nato_9`, `phone_repeat`, `phone_outro`, `phone_hangup`, `keypad_beep`, `keypad_accept`, `keypad_deny`, `pc_beep`, `server_rack_hum`) are built into the DLL. A file with the same name in the `audio` folder replaces the built-in one.
+
+Everything else runs fine with no audio. To add sound, drop **16-bit PCM `.wav`** files (any sample rate, mono or stereo) into the `audio` folder next to the config, named after the slot:
 
 `gas_gas_gas`, `dubstep`, `hells_reckoning`, `mayhem_protocol`, `mayhem_insurgency`, `redacted_protocol`, `recontainment`, `ascension`, `red_right_hand`, `server_rack_hum`, `pc_beep`, `phone_ring`, `keypad_beep`, `keypad_accept`, `keypad_deny`, `radiance_revive`
 

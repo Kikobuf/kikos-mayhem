@@ -16,7 +16,7 @@
     <Nullable>disable</Nullable>
     <AssemblyName>KikosMayhem</AssemblyName>
     <RootNamespace>KikosMayhem</RootNamespace>
-    <Version>1.2.0</Version>
+    <Version>1.3.0</Version>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
     <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
     <NoWarn>$(NoWarn);CS0618;CS8632</NoWarn>
@@ -43,4 +43,7 @@
     <Reference Include="Unity.Mathematics" HintPath="$(SL_REFERENCES)/Unity.Mathematics.dll" Private="false" />
   </ItemGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\Audio\*.wav" LogicalName="KikosMayhem.Audio.%(Filename).wav" />
+  </ItemGroup>
 </Project>

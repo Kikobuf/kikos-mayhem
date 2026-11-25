@@ -258,6 +258,8 @@ ascension:
   pc_count: 3
   # Number of digits in the phone's NATO code.
   code_length: 9
+  # How far (meters) the phone call's voice can be heard.
+  phone_voice_range: 12
   # Seconds the Puppet has to reach SCP-079's room during the recontainment run (0 = unlimited).
   recontainment_time_limit: 0
   # Keypad placement next to the Nuke Room warhead panel (meters to the side / up).

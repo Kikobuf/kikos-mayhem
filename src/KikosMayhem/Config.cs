@@ -305,6 +305,9 @@ public sealed class AscensionConfig
     public int PcCount { get; set; } = 3;
     [Description("Number of digits in the phone's NATO code (a new random code every round).")]
     public int CodeLength { get; set; } = 9;
+
+    [Description("How far (meters) the phone call's voice can be heard.")]
+    public float PhoneVoiceRange { get; set; } = 12f;
     [Description("Seconds the Puppet has to reach SCP-079's room during the recontainment run (0 = unlimited).")]
     public float RecontainmentTimeLimit { get; set; } = 0f;
     [Description("Keypad placement next to the Nuke Room warhead panel (meters to the side / up).")]
