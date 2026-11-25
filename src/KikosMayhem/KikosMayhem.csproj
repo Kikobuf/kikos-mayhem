@@ -1,0 +1,46 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Kiko's Mayhem - SCP: Secret Laboratory LabAPI plugin.
+
+    Build needs the game's own DLLs (they can't be redistributed).
+    Point SL_REFERENCES at the dedicated server's Managed folder, e.g.
+      Windows: set SL_REFERENCES=C:\SCPSL Server\SCPSL_Data\Managed
+      Linux:   export SL_REFERENCES=$HOME/scpsl/SCPSL_Data/Managed
+    or pass -p:SL_REFERENCES=... to dotnet build.
+  -->
+
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <AssemblyName>KikosMayhem</AssemblyName>
+    <RootNamespace>KikosMayhem</RootNamespace>
+    <Version>1.0.0</Version>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+    <NoWarn>$(NoWarn);CS0618;CS8632</NoWarn>
+    <SL_REFERENCES Condition="'$(SL_REFERENCES)' == ''">$(MSBuildThisFileDirectory)../../references</SL_REFERENCES>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies.net48" Version="1.0.3" PrivateAssets="all" />
+    <PackageReference Include="BepInEx.AssemblyPublicizer.MSBuild" Version="0.4.2" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="Assembly-CSharp" HintPath="$(SL_REFERENCES)/Assembly-CSharp.dll" Private="false" Publicize="true" />
+    <Reference Include="Assembly-CSharp-firstpass" HintPath="$(SL_REFERENCES)/Assembly-CSharp-firstpass.dll" Private="false" />
+    <Reference Include="LabApi" HintPath="$(SL_REFERENCES)/LabApi.dll" Private="false" />
+    <Reference Include="CommandSystem.Core" HintPath="$(SL_REFERENCES)/CommandSystem.Core.dll" Private="false" />
+    <Reference Include="Mirror" HintPath="$(SL_REFERENCES)/Mirror.dll" Private="false" />
+    <Reference Include="NorthwoodLib" HintPath="$(SL_REFERENCES)/NorthwoodLib.dll" Private="false" />
+    <Reference Include="Pooling" HintPath="$(SL_REFERENCES)/Pooling.dll" Private="false" />
+    <Reference Include="YamlDotNet" HintPath="$(SL_REFERENCES)/YamlDotNet.dll" Private="false" />
+    <Reference Include="UnityEngine" HintPath="$(SL_REFERENCES)/UnityEngine.dll" Private="false" />
+    <Reference Include="UnityEngine.CoreModule" HintPath="$(SL_REFERENCES)/UnityEngine.CoreModule.dll" Private="false" />
+    <Reference Include="UnityEngine.PhysicsModule" HintPath="$(SL_REFERENCES)/UnityEngine.PhysicsModule.dll" Private="false" />
+    <Reference Include="Unity.Mathematics" HintPath="$(SL_REFERENCES)/Unity.Mathematics.dll" Private="false" />
+  </ItemGroup>
+
+</Project>

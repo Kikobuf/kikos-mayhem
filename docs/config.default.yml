@@ -1,0 +1,292 @@
+# Master switch. When false the server plays vanilla SCP:SL.
+enabled: true
+# Prints extra debug logs to the server console.
+debug: false
+items:
+# Custom item ids that are disabled (never spawn, can't be given). See docs/ITEMS.md for ids.
+  disabled: []
+  # Show the held custom item's name and description at the bottom of the screen.
+  show_held_description: true
+  # Aura light intensity / range on dropped custom items.
+  aura_intensity: 1.20000005
+  aura_range: 1.60000002
+  # Custom items thrown into a pit go to SCP-106's dimension and are later recycled into the facility (also O5 / Facility Manager cards).
+  recycle_from_pits: true
+  recycle_delay_seconds: 90
+  skinwalker_reveal_seconds: 3
+  radiance_heal_per_second: 2
+  radiance_max_ahp: 14
+  radiance_range: 8
+  radiance_revive_cooldown: 120
+  warp_coin_cooldown: 30
+  lock_to_the_city_lock_seconds: 10
+  lock_to_the_city_cooldown: 20
+  mayhem_coin_cooldown: 300
+  vampirism_start_seconds: 35
+  vampirism_seconds_per_kill: 10
+  # Hell's Reckoning: seconds to kill an SCP before the jailbird breaks and kills you.
+  hells_reckoning_seconds: 120
+  pocket_nuke_irradiated_percent: 10
+  pocket_nuke_radius: 45
+  suicide_vest_damage: 1000
+  pink_extract_damage: 1000
+  crimson_echo_true_damage: 200
+  crimson_echo_puppet_true_damage: 150
+  crimson_echo_self_damage: 40
+  pinpointer_damage: 200
+  peacemaker_scp_heal: 200
+  peacemaker_self_cost_percent: 40
+spawning:
+# Average custom items spawned per facility zone room at round start (rarity decides which).
+  custom_items_per_room: 0.349999994
+  # Relative spawn weight per rarity (Admin items never spawn naturally).
+  rarity_weights:
+    Common: 50
+    Rare: 28
+    Epic: 14
+    Legendary: 6
+    Upgraded: 1.5
+    Ascended: 0.5
+  # Gate A surface pile: number of custom items + normal items.
+  gate_a_custom_items: 6
+  gate_a_normal_items: 10
+  # Exit (Gate B escape) pile.
+  exit_custom_items: 2
+  # SCP-079's room pile. Guaranteed 2 (+ extra roll). Only spawns if 079 isn't in the round, or once 079 is contained.
+  scp079_room_custom_items: 2
+  scp079_room_extra_chance: 35
+  # Chance (percent) to get a custom item when escaping for the first time.
+  escape_custom_item_chance: 30
+  # Rooms where no items spawn.
+  blacklisted_rooms:
+  - HczWaysideIncinerator
+  - Hcz096
+  - Pocket
+  - HczAcroamaticAbatement
+  # Spawn bonus chances (percent) rolled for every human spawn.
+  spawn_bonuses:
+    ExtraAmmo: 80
+    Adrenaline: 20
+    Scp207: 25
+    Scp500: 5
+    A7: 3
+    E11: 3
+    Jailbird: 2
+    MicroHid: 1
+    Com45: 0.5
+    Scp018: 0.25
+    OverloadedCom45: 0.0500000007
+  # Remove dropped items and ragdolls older than this many seconds (0 = never).
+  cleanup_after_seconds: 600
+effects:
+  herd_range: 8
+  herd_heal_per_friend: 1
+  irradiated_scp_scalar: 0.349999994
+  tazed_seconds: 3
+  # Nuke room radiation: seconds you can stay before getting Irradiated, then it keeps stacking.
+  nuke_room_grace_seconds: 30
+  nuke_room_human_percent: 1
+  nuke_room_scp_percent: 0.100000001
+  # SCP-1853: crit chance (percent) and crit damage bonus per dose.
+  scp1853_crit_chance: 5
+  scp1853_crit_damage: 0.100000001
+  scp1853_puppet_crit_chance: 2.5
+  scp1853_puppet_crit_damage: 0.0299999993
+gambling:
+  painkiller_speed_chance: 90
+  painkiller_speed_amount: 5
+  painkiller_speed_cap: 100
+  painkiller_death_chance: 10
+  # Weights for SCP-500 outcomes.
+  scp500:
+    ReviveOne: 25
+    ReviveAll: 4
+    Zombie: 6
+    RandomizeInventory: 15
+    RandomConsumables: 20
+    TeleportGuardsToClassD: 6
+    CureZombies: 8
+    TeleportToScp: 6
+    Nothing: 10
+  # Weights for adrenaline outcomes.
+  adrenaline:
+    Scp1853: 8
+    Scp207: 8
+    Speed: 10
+    SevenBalls: 3
+    SeveredHands: 2
+    CardiacArrest: 3
+    BadAdrenaline: 2
+    DamageReductionAll: 7
+    DamageReductionBody: 7
+    NegativeReduction: 7
+    Stained: 4
+    Sinkhole: 4
+    GasGasGas: 2
+    TurboDrunk: 5
+    Flash: 4
+    Burned: 3
+    Tazed: 3
+    TeleportSpawn: 5
+    Deafened: 3
+    Confused: 3
+    SixGrenades: 2
+    Disabled: 3
+    Herd: 5
+    Irradiated: 3
+    Explode: 1
+  # Item Chances Inversed global event: painkiller death chance.
+  inversed_painkiller_death_chance: 90
+  addictionater_overdose_seconds: 25
+  addictionater_seconds_per_item: 5
+scps:
+# Extra SCP max HP per player in the server.
+  health_per_player: 200
+  scp173_blink_faster: 50
+  scp173_blink_per_dead: 5
+  scp173_tantrum_explosion_radius: 2
+  scp173_tantrum_health: 150
+  scp096_docile_speed: 20
+  scp096_distressed_speed: 5
+  scp096_enraged_speed: 10
+  scp096_post_nuke_max_speed: 110
+  scp096_aura_range: 4
+  scp096_docile_aura_damage: 1
+  scp096_enraged_aura_damage: 5
+  scp096_post_nuke_aura_multiplier: 3
+  scp096_charge_explosions: 5
+  scp096_enraging_damage_reduction: 40
+  scp106_escape_chance: 80
+  scp106_dr_per_healthy_player: 1.5
+  scp106_speed_per_pocket_player: 10
+  scp106_speed_per_traumatized: 5
+  scp106_aura_base_range: 3
+  scp106_aura_range_per_traumatized: 0.5
+  scp106_aura_damage: 2
+  scp939_base_speed: 15
+  scp939_pounce_speed: 90
+  scp939_pounce_speed_seconds: 8
+  scp939_damage_multiplier: 1.29999995
+  scp939_hunted_per_stack: 0.5
+  scp939_hunted_seconds: 15
+  scp049_base_speed: 30
+  scp049_cardiac_damage_per_second: 16
+  scp049_zombie_heal_on_convert: 20
+  scp049_heal_on_convert: 50
+  scp0492_speed_per_zombie: 5
+  scp049_speed_per_zombie: 3
+  # SCP-966: black figure that appears behind players and poses, sometimes causing a facility-wide blackout.
+  scp966_enabled: true
+  scp966_min_interval: 45
+  scp966_max_interval: 110
+  scp966_linger_seconds: 6
+  scp966_blackout_chance: 15
+  scp966_blackout_seconds: 12
+scp079:
+# Seconds SCP-079 has to choose a Puppet before one is picked automatically.
+  pick_seconds: 90
+  # Grace period after Puppet is picked: Puppet locked in the armory, generators locked, no damage.
+  grace_seconds: 90
+  puppet_base_health: 1000
+  puppet_health_per_tier: 250
+  # Generators (lives) by player count: 8+ = 2, 14+ = 3, 20+ = 4, 26+ = 5.
+  generator_thresholds:
+  - 8
+  - 14
+  - 20
+  - 26
+  generator_lock_after_death: 15
+  damage_taken_per_active_generator: 35
+  aux_regen_per_tier:
+  - 2.5
+  - 4
+  - 6
+  - 8.5
+  - 11
+  puppet_kill_xp: 25
+  scp_kill_xp: 35
+  indirect_kill_xp: 8
+  bulkhead_cost: 50
+  grenade_ping_cost: 75
+  grenade_ping_cooldown: 20
+  grenade_ping_count: 5
+  overcharge_cost: 100
+  overcharge_cooldown: 30
+  overcharge_base_radius: 6
+  overcharge_radius_per_tier: 1.5
+  # Tooth and Nail (Puppet's SCP-127) penetration per tier and hume shield per tier.
+  tooth_and_nail_penetration:
+  - 50
+  - 60
+  - 70
+  tooth_and_nail_hume_shield:
+  - 50
+  - 100
+  - 150
+  hume_regen_per_second: 10
+  hume_regen_delay: 12
+ascension:
+  enabled: true
+  # PCs to find (1 always LCZ, 1 HCZ-or-Entrance, 1 always Entrance).
+  pc_count: 3
+  # Number of digits in the phone's NATO code.
+  code_length: 4
+  # Seconds the Puppet has to reach SCP-079's room during the recontainment run (0 = unlimited).
+  recontainment_time_limit: 0
+  # Keypad placement next to the Nuke Room warhead panel (meters to the side / up).
+  keypad_side_offset: 1.39999998
+  keypad_height_offset: 0
+  ascended_health: 1500
+  ascended_regen_delay: 4
+  ascended_regen_per_second: 60
+  ascended_kill_aura_radius: 15
+  ascended_speed_cap: 200
+  ascended_crit_multiplier_cap: 21
+  # Red Right Hand loadout.
+  red_right_hand_items:
+  - GunFRMG0
+  - GunE11SR
+  - KeycardO5
+  - Medkit
+  - Medkit
+  - Adrenaline
+  - ArmorHeavy
+  - Radio
+events:
+# Weights for the global event picked each round.
+  global_event_weights:
+    RareItemsCommon: 12
+    FiveXLoot: 12
+    ItemChancesInversed: 10
+    CustomItemsOnDeath: 10
+    CausalityCorruption: 4
+    AllItems1853: 8
+    FiveXCustomLoot: 10
+  # Chance (percent) a sub event also happens this round.
+  sub_event_chance: 35
+  sub_event_weights:
+    BeQuiet: 1
+    FinallyAwake: 1
+    CandyOnDeath: 1
+  # You May Want To Be Quiet: voice loudness (0-1) that makes you explode.
+  be_quiet_threshold: 0.850000024
+  # Ultimate Loot Pile special event chance (percent) per round and when it happens.
+  ultimate_loot_pile_chance: 30
+  ultimate_loot_pile_min_time: 300
+  ultimate_loot_pile_max_time: 900
+  ultimate_loot_pile_items: 25
+  # Minutes into the round when Mayhem Protocol / Mayhem Insurgency auto-starts (slightly randomized).
+  mayhem_auto_start_minutes: 25
+  mayhem_protocol_chance: 35
+  mayhem_protocol_seconds: 120
+  # [REDACTED] Protocol: arm the nuke during this hour (server local time, 0 = midnight).
+  redacted_protocol_enabled: true
+  redacted_protocol_hour: 0
+  redacted_protocol_delay: 120
+  redacted_protocol_scp_count: 3
+  # Replace the auto-nuke with the Dead Man's Switch (12/16/2024 change).
+  dead_mans_switch: true
+audio:
+# Volume for sound effects and music (0-1).
+  volume: 0.800000012
+  music_volume: 0.600000024
