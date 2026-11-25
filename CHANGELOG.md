@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.2.0: Ascension polish
+- The three ascension PCs glow blue.
+- The phone code is 9 digits by default and random every round. Existing servers keep their old `code_length` in config.yml; set it to 9 to match.
+- New code panel at the bottom middle of the Puppet's and SCP-079's screens: the NATO words, plus a slot per digit that fills in as the keypad is pressed.
+- A wrong code at the Nuke Room keypad detonates the Alpha Warhead instantly. Everyone on Surface survives.
+- M.Y.H.M Insurgents and the Puppet can now shoot each other for full damage. Grenades and melee still follow team rules.
+- The Puppet no longer respawns after the warhead has detonated.
+- Self-test: `mayhem selftest nuke` runs the wrong-code path.
+
 ## 1.1.0: synced with the latest Mayhem changelogs
 **Puppet rework**
 - 500 HP that doesn't scale with tier. Medical items can heal it up to 50% of max HP; SCP-079's ping heal is halved (1 AP = 0.5 HP).

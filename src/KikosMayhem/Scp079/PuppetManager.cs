@@ -488,6 +488,11 @@ public sealed class PuppetManager : MayhemModule
             ev.IsAllowed = false;
             return;
         }
+        // Mayhem enemies that the game sees as teammates (M.Y.H.M Insurgents vs the Puppet are both Tutorial):
+        // force full damage so the vanilla friendly-fire reduction (and teamkill detector) don't apply.
+        if (attacker != null && attacker != target && attacker.IsEnemyOf(target) && ev.DamageHandler is AttackerDamageHandler adh
+            && !HitboxIdentity.IsEnemy(attacker.ReferenceHub, target.ReferenceHub))
+            adh.ForceFullFriendlyFire = true;
         // Grace: Puppet can't deal damage.
         if (attackerPuppet && Time.time < GraceEnds)
         {
@@ -663,7 +668,8 @@ public sealed class PuppetManager : MayhemModule
             return;
         }
 
-        if (Lives > 0 && Computer != null)
+        // The facility is gone after a detonation: no respawns underground.
+        if (Lives > 0 && Computer != null && !Warhead.IsDetonated)
         {
             SpendLife(ev.Attacker);
             var cfg = MayhemPlugin.Cfg.Scp079;
@@ -671,7 +677,7 @@ public sealed class PuppetManager : MayhemModule
             CassieW.Say("pitch_0.9 .g2 SCP 0 7 9 host terminated . generator engaged", $"SCP-079's Puppet was terminated by {ev.Attacker?.Nickname ?? "unknown"}. Generator engaged.");
             Loops.After(0.5f, () =>
             {
-                if (p.Valid() && !p.IsAlive && Active) SpawnPuppet(p, grace: false, stun: cfg.RespawnStunSeconds);
+                if (p.Valid() && !p.IsAlive && Active && !Warhead.IsDetonated && Computer != null) SpawnPuppet(p, grace: false, stun: cfg.RespawnStunSeconds);
             });
         }
         else

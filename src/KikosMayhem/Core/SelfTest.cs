@@ -25,11 +25,14 @@ public static class SelfTest
 
     public static bool OnlyPuppet;
 
-    public static void Run(bool onlyPuppet = false)
+    public static bool WrongCode;
+
+    public static void Run(bool onlyPuppet = false, bool wrongCode = false)
     {
         if (_running) return;
         _running = true;
-        OnlyPuppet = onlyPuppet;
+        OnlyPuppet = onlyPuppet || wrongCode;
+        WrongCode = wrongCode;
         Timing.RunCoroutine(Routine());
     }
 
@@ -224,6 +227,22 @@ public static class SelfTest
         yield return Timing.WaitForSeconds(0.3f);
         Log($"SCP hits puppet: HP {hpBefore}->{puppet.Health} (expect unchanged: same side)");
 
+        // M.Y.H.M Insurgents (Tutorial) can hurt the Puppet (Tutorial) despite the game seeing them as teammates.
+        var insurgent = ds[4];
+        MyhmInsurgency.Make(insurgent);
+        yield return Timing.WaitForSeconds(1.5f);
+        insurgent.DisableEffect<CustomPlayerEffects.SpawnProtected>();
+        float ehpBefore = puppet.Health + puppet.HumeShield;
+        puppet.Damage(new PlayerStatsSystem.JailbirdDamageHandler(insurgent.ReferenceHub, 60f, Vector3.forward));
+        yield return Timing.WaitForSeconds(0.3f);
+        Log($"insurgent hits puppet: HP+HS {ehpBefore} -> {puppet.Health + puppet.HumeShield} (expect lower)");
+        Scp079.PuppetManager.Instance.GraceEnds = 0; // skip the post-pick grace window for this check
+        float insBefore = insurgent.Health;
+        insurgent.Damage(new PlayerStatsSystem.JailbirdDamageHandler(puppet.ReferenceHub, 40f, Vector3.forward));
+        yield return Timing.WaitForSeconds(0.3f);
+        Log($"puppet hits insurgent: HP {insBefore} -> {insurgent.Health} (expect lower)");
+        MyhmInsurgency.Reset();
+
         // Lives: generators adjusted for player count; dying spends one and respawns the Puppet stunned.
         Log($"generators on map: {Scp079.GeneratorSpawner.All.Count()} lives={pm?.Lives}/{pm?.MaxLives}");
         puppet.Kill("selftest");
@@ -239,7 +258,26 @@ public static class SelfTest
         {
             Log($"ascension stage: {quest.Current}");
             if (quest.Current is Ascension.AscensionQuest.Stage.Ascended or Ascension.AscensionQuest.Stage.Done) break;
-            quest.DebugAdvance(puppet);
+            if (WrongCode && quest.Current == Ascension.AscensionQuest.Stage.Keypad)
+            {
+                var surfaceGuy = ds[2];
+                if (!surfaceGuy.IsAlive) surfaceGuy.SetRole(PlayerRoles.RoleTypeId.ClassD);
+                var outside = Room.List.First(r => r.Zone == MapGeneration.FacilityZone.Surface);
+                surfaceGuy.Position = outside.Position + Vector3.up * 1.5f;
+                yield return Timing.WaitForSeconds(0.5f);
+                Log($"{surfaceGuy.Nickname} placed on surface: zone={surfaceGuy.Zone}");
+            }
+            quest.DebugAdvance(puppet, WrongCode);
+            if (WrongCode && quest.Current == Ascension.AscensionQuest.Stage.Done)
+            {
+                yield return Timing.WaitForSeconds(3f);
+                var surface = Player.ReadyList.Where(p => p.IsDummy && p.IsAlive).Select(p => $"{p.Nickname}:{p.Role}:{p.Zone}");
+                Log($"after wrong code: warhead detonated={Warhead.IsDetonated} 079 alive={Scp079.PuppetManager.Computer != null} alive bots=[{string.Join(", ", surface)}]");
+                Log("finished (wrong-code run)");
+                Round.IsLocked = false;
+                _running = false;
+                yield break;
+            }
             yield return Timing.WaitForSeconds(3f);
         }
         yield return Timing.WaitForSeconds(6f);

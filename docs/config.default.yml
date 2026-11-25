@@ -257,7 +257,7 @@ ascension:
   # PCs to find (1 always LCZ, 1 HCZ-or-Entrance, 1 always Entrance).
   pc_count: 3
   # Number of digits in the phone's NATO code.
-  code_length: 4
+  code_length: 9
   # Seconds the Puppet has to reach SCP-079's room during the recontainment run (0 = unlimited).
   recontainment_time_limit: 0
   # Keypad placement next to the Nuke Room warhead panel (meters to the side / up).

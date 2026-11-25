@@ -235,7 +235,7 @@ public sealed class MayhemCommand : ICommand
                 return true;
             }
             case "selftest":
-                SelfTest.Run(Arg(1) == "puppet");
+                SelfTest.Run(Arg(1) == "puppet", Arg(1) == "nuke");
                 response = "Self test started — watch the console.";
                 return true;
         }

@@ -260,9 +260,12 @@ public sealed class AscensionQuest : MayhemModule
         var gray = new Color(0.25f, 0.25f, 0.27f);
         Prim(PrimitiveType.Cube, floor + Vector3.up * 0.38f, rot, new Vector3(0.9f, 0.76f, 0.55f), gray);                          // desk
         Prim(PrimitiveType.Cube, floor + Vector3.up * 1.0f + rot * new Vector3(0, 0, 0.1f), rot, new Vector3(0.6f, 0.4f, 0.06f), Color.black); // monitor
-        Prim(PrimitiveType.Cube, floor + Vector3.up * 1.0f + rot * new Vector3(0, 0, 0.065f), rot, new Vector3(0.54f, 0.34f, 0.01f), new Color(0f, 0.9f, 0.3f), false); // screen
+        var blue = new Color(0.1f, 0.45f, 1f);
+        Prim(PrimitiveType.Cube, floor + Vector3.up * 1.0f + rot * new Vector3(0, 0, 0.065f), rot, new Vector3(0.54f, 0.34f, 0.01f), blue, false); // screen
         Prim(PrimitiveType.Cube, floor + Vector3.up * 0.78f + rot * new Vector3(0, 0, -0.12f), rot, new Vector3(0.45f, 0.03f, 0.16f), new Color(0.1f, 0.1f, 0.1f)); // keyboard
-        Light(floor + Vector3.up * 1.1f + rot * new Vector3(0, 0, -0.3f), new Color(0f, 1f, 0.4f), 2f, 1.2f);
+        // Blue glow so you can tell which PC is the objective from across the room.
+        Light(floor + Vector3.up * 1.1f + rot * new Vector3(0, 0, -0.3f), blue, 4.5f, 3f);
+        Light(floor + Vector3.up * 0.2f, blue, 2.5f, 2f);
         Sound("pc_beep", floor + Vector3.up, 10f);
 
         int index = _pcs.Count;
@@ -311,11 +314,8 @@ public sealed class AscensionQuest : MayhemModule
             string words = string.Join(" ", _code.Select(c => Nato[c - '0']));
             StopSounds();
             ClearProps();
-            Hud.Message(p, $"<color=#FFD700>☎ \"{words}\"</color>", 30f);
-            p.SendBroadcast($"<color=#FFD700>☎ {words}</color>", 20);
-            var comp = KikosMayhem.Scp079.PuppetManager.Computer;
-            if (comp != null) comp.SendBroadcast($"<color=#FFD700>☎ {words}</color>", 20);
             StartKeypad();
+            RefreshDisplay();
         });
     }
 
@@ -374,14 +374,33 @@ public sealed class AscensionQuest : MayhemModule
         Audio.Sfx.Play("keypad_beep", _keypadPos, 8f);
         if (key == "C") _typed = "";
         else if (key == "OK") { Submit(p, _typed); return; }
-        else if (_typed.Length < 8) _typed += key;
+        else if (_typed.Length < Mathf.Max(_code.Length, 1) + 2) _typed += key;
         RefreshDisplay();
     }
 
     private void RefreshDisplay()
     {
-        if (_keypadDisplay == null || _keypadDisplay.IsDestroyed) return;
-        _keypadDisplay.TextFormat = $"<color=#00FF66>{(_typed.Length == 0 ? "____" : _typed)}</color>";
+        if (_keypadDisplay != null && !_keypadDisplay.IsDestroyed)
+            _keypadDisplay.TextFormat = $"<color=#00FF66>{Slots()}</color>";
+        ShowCodePanel();
+    }
+
+    /// <summary>Typed digits filling the code's slots, e.g. "4 7 2 _ _ _ _ _ _".</summary>
+    private string Slots() =>
+        string.Join(" ", Enumerable.Range(0, Mathf.Max(_code.Length, _typed.Length)).Select(i => i < _typed.Length ? _typed[i].ToString() : "_"));
+
+    /// <summary>
+    /// Bottom-middle panel for the Puppet (and SCP-079) once the phone has been answered: the code as NATO words,
+    /// and underneath it the digits typed on the keypad so far, so you can check it matches before pressing OK.
+    /// </summary>
+    private void ShowCodePanel()
+    {
+        if (Current != Stage.Keypad || _code.Length == 0) return;
+        string words = string.Join("  ", _code.Select(c => Nato[c - '0']));
+        string text = $"<color=#FFD700>☎ {words}</color>\n<size=26><color=#00FF66><b>{Slots()}</b></color></size>";
+        foreach (var p in KikosMayhem.Scp079.PuppetManager.AllPuppets) Hud.SetInfo(p, "code", text, 1.5f, -1);
+        var pc = KikosMayhem.Scp079.PuppetManager.Computer;
+        if (pc != null) Hud.SetInfo(pc, "code", text, 1.5f, -1);
     }
 
     /// <summary>Console fallback: .code 1234 while standing at the keypad.</summary>
@@ -403,10 +422,27 @@ public sealed class AscensionQuest : MayhemModule
             return true;
         }
         Audio.Sfx.Play("keypad_deny", _keypadPos, 10f);
-        Hud.Message(p, "<color=#FF4040>ACCESS DENIED</color>", 2f);
-        _typed = "";
-        RefreshDisplay();
+        Hud.MessageAll("<color=#FF0000>INCORRECT CODE — ALPHA WARHEAD DETONATION</color>", 6f);
+        Current = Stage.Done;
+        ClearProps();
+        NukeFacility(p);
         return false;
+    }
+
+    /// <summary>Wrong code: the facility is nuked instantly. Everyone on Surface survives.</summary>
+    private static void NukeFacility(Player trigger)
+    {
+        if (Warhead.IsDetonated) return;
+        try
+        {
+            Warhead.IsLocked = false;
+            if (!Warhead.IsDetonationInProgress) Warhead.Start(false, true, trigger);
+            Warhead.DetonationTime = 0.1f;
+        }
+        catch (System.Exception e)
+        {
+            LabApi.Features.Console.Logger.Error($"[Mayhem] wrong-code nuke failed: {e}");
+        }
     }
 
     // ───────── 5. recontainment run ─────────
@@ -512,18 +548,19 @@ public sealed class AscensionQuest : MayhemModule
             Stage.ServerRack => "Objective: find the humming server rack (Server Room, bottom corner)",
             Stage.Pcs => $"Objective: access the terminals ({_pcs.Count(x => x.done)}/{_pcs.Count})",
             Stage.Phone => "Objective: answer the ringing phone in Entrance Zone",
-            Stage.Keypad => "Objective: enter the decoded code on the Nuke Room keypad",
+            Stage.Keypad => "Objective: enter the decoded code on the Nuke Room keypad — a wrong code nukes the facility",
             Stage.Recontainment => "Objective: <color=#FF4040>RUN to SCP-079's room</color>",
             _ => null,
         };
         if (text == null) return;
+        ShowCodePanel();
         foreach (var p in KikosMayhem.Scp079.PuppetManager.AllPuppets) Hud.SetInfo(p, "ascension", $"<color=#00FFFF>{text}</color>", 1.2f, 2);
         var pc = KikosMayhem.Scp079.PuppetManager.Computer;
         if (pc != null) Hud.SetInfo(pc, "ascension", $"<color=#00FFFF>{text}</color>", 1.2f, 2);
     }
 
     /// <summary>Test helper: completes the current stage as if the Puppet did it.</summary>
-    public void DebugAdvance(Player puppet)
+    public void DebugAdvance(Player puppet, bool wrongCode = false)
     {
         switch (Current)
         {
@@ -541,8 +578,12 @@ public sealed class AscensionQuest : MayhemModule
                 break;
             case Stage.Keypad:
                 puppet.Position = _keypadPos;
-                LabApi.Features.Console.Logger.Info("[SelfTest] wrong code -> " + SubmitFromCommand(puppet, "0000000"));
-                LabApi.Features.Console.Logger.Info("[SelfTest] right code -> " + SubmitFromCommand(puppet, _code));
+                // Type digit by digit like the keypad buttons do, so the on-screen slots fill in.
+                string entry = wrongCode ? new string(_code.Select(c => c == '9' ? '0' : (char)(c + 1)).ToArray()) : _code;
+                foreach (char c in entry) Press(puppet, c.ToString());
+                LabApi.Features.Console.Logger.Info($"[SelfTest] keypad shows: {Slots()} (code {_code})");
+                Press(puppet, "OK");
+                LabApi.Features.Console.Logger.Info($"[SelfTest] submitted {(wrongCode ? "WRONG" : "right")} code -> stage {Current}");
                 break;
             case Stage.Recontainment:
                 Items.Defs.Teleports.ToRoom(puppet, ItemSpawner.Scp079Room);

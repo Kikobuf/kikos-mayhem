@@ -303,8 +303,8 @@ public sealed class AscensionConfig
     public float SpawnProtectionSeconds { get; set; } = 10f;
     [Description("PCs to find (1 always LCZ, 1 HCZ-or-Entrance, 1 always Entrance).")]
     public int PcCount { get; set; } = 3;
-    [Description("Number of digits in the phone's NATO code.")]
-    public int CodeLength { get; set; } = 4;
+    [Description("Number of digits in the phone's NATO code (a new random code every round).")]
+    public int CodeLength { get; set; } = 9;
     [Description("Seconds the Puppet has to reach SCP-079's room during the recontainment run (0 = unlimited).")]
     public float RecontainmentTimeLimit { get; set; } = 0f;
     [Description("Keypad placement next to the Nuke Room warhead panel (meters to the side / up).")]
