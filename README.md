@@ -185,9 +185,18 @@ Use audio you have the rights to. No music ships with this repo.
 
 ## Building from source
 
-You need the .NET 8 SDK and the SCP:SL Dedicated Server installed. The game's DLLs are referenced but never committed.
+You need the .NET 8 SDK and the SCP:SL Dedicated Server installed. The game's DLLs are referenced but never committed (they can't be redistributed).
+
+**Opening the repo in VS Code / Visual Studio / Rider shows thousands of errors until the game DLLs are found.** Fix it once:
+
+1. Run `scripts\install-server.ps1` (or `./scripts/install-server.sh`). Besides installing the server, it copies the game DLLs into the repo's `references` folder. Or copy everything from `<server>\SCPSL_Data\Managed\*.dll` into a `references` folder at the repo root yourself.
+2. In VS Code: run `dotnet restore src/KikosMayhem/KikosMayhem.csproj`, then **Developer: Reload Window**.
+
+The project also finds the DLLs by itself if the server is in `C:\SCPSL-Server`, the default Steam library, or `~/scpsl`. Then build:
 
 ```bash
+dotnet build src/KikosMayhem/KikosMayhem.csproj -c Release
+# or point it at a server somewhere else:
 dotnet build src/KikosMayhem/KikosMayhem.csproj -c Release -p:SL_REFERENCES="<server>/SCPSL_Data/Managed"
 ```
 

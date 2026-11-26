@@ -45,6 +45,13 @@ for ($i = 0; $i -lt 3; $i++) {
 }
 if (-not (Test-Path (Join-Path $ServerDir "SCPSL_Data\Managed\Assembly-CSharp.dll"))) { throw "Server install failed." }
 
+# Copy the game's DLLs into the repo's (git-ignored) references folder so the project builds
+# and your code editor (VS Code / Visual Studio / Rider) can resolve the game's types.
+$refs = Join-Path $RepoRoot "references"
+New-Item -ItemType Directory -Force -Path $refs | Out-Null
+Copy-Item (Join-Path $ServerDir "SCPSL_Data\Managed\*.dll") $refs -Force
+Write-Host "Copied the game DLLs to $refs (for building / your editor)."
+
 # 3. Plugin
 if ($Build) {
     Write-Host "Building KikosMayhem.dll from source (needs the .NET 8 SDK)..."

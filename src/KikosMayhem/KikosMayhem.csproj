@@ -4,7 +4,10 @@
     Kiko's Mayhem - SCP: Secret Laboratory LabAPI plugin.
 
     Build needs the game's own DLLs (they can't be redistributed).
-    Point SL_REFERENCES at the dedicated server's Managed folder, e.g.
+    The easiest way: run scripts\install-server.ps1 (or .sh) once. It copies them into the repo's
+    references\ folder (git-ignored), which this project and your editor pick up automatically.
+    It also looks in the usual server install folders by itself (C:\SCPSL-Server, the Steam library, ~/scpsl).
+    Or point SL_REFERENCES at the dedicated server's Managed folder, e.g.
       Windows: set SL_REFERENCES=C:\SCPSL Server\SCPSL_Data\Managed
       Linux:   export SL_REFERENCES=$HOME/scpsl/SCPSL_Data/Managed
     or pass -p:SL_REFERENCES=... to dotnet build.
@@ -20,8 +23,19 @@
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
     <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
     <NoWarn>$(NoWarn);CS0618;CS8632</NoWarn>
-    <SL_REFERENCES Condition="'$(SL_REFERENCES)' == ''">$(MSBuildThisFileDirectory)../../references</SL_REFERENCES>
+    <_RepoRefs>$(MSBuildThisFileDirectory)../../references</_RepoRefs>
+    <_SteamServer>$(MSBuildProgramFiles32)\Steam\steamapps\common\SCP Secret Laboratory Dedicated Server\SCPSL_Data\Managed</_SteamServer>
+    <SL_REFERENCES Condition="'$(SL_REFERENCES)' == '' and Exists('$(_RepoRefs)/Assembly-CSharp.dll')">$(_RepoRefs)</SL_REFERENCES>
+    <SL_REFERENCES Condition="'$(SL_REFERENCES)' == '' and Exists('C:\SCPSL-Server\SCPSL_Data\Managed\Assembly-CSharp.dll')">C:\SCPSL-Server\SCPSL_Data\Managed</SL_REFERENCES>
+    <SL_REFERENCES Condition="'$(SL_REFERENCES)' == '' and Exists('$(_SteamServer)\Assembly-CSharp.dll')">$(_SteamServer)</SL_REFERENCES>
+    <SL_REFERENCES Condition="'$(SL_REFERENCES)' == '' and Exists('$(HOME)/scpsl/SCPSL_Data/Managed/Assembly-CSharp.dll')">$(HOME)/scpsl/SCPSL_Data/Managed</SL_REFERENCES>
+    <SL_REFERENCES Condition="'$(SL_REFERENCES)' == ''">$(_RepoRefs)</SL_REFERENCES>
   </PropertyGroup>
+
+  <!-- One clear message instead of thousands of "type not found" errors when the game DLLs are missing. -->
+  <Target Name="CheckGameDlls" BeforeTargets="ResolveAssemblyReferences;CoreCompile" Condition="!Exists('$(SL_REFERENCES)/Assembly-CSharp.dll')">
+    <Error Text="SCP:SL game DLLs not found (looked in '$(SL_REFERENCES)'). Run scripts\install-server.ps1 once (it copies them into the repo's references folder), or build with -p:SL_REFERENCES=&quot;&lt;server&gt;\SCPSL_Data\Managed&quot;." />
+  </Target>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies.net48" Version="1.0.3" PrivateAssets="all" />

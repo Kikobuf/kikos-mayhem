@@ -35,6 +35,11 @@ for i in 1 2 3; do
 done
 [[ -f "$SERVER_DIR/SCPSL_Data/Managed/Assembly-CSharp.dll" ]] || { echo "Server install failed"; exit 1; }
 
+# Copy the game's DLLs into the repo's (git-ignored) references folder for building / your editor.
+mkdir -p "$REPO_ROOT/references"
+cp "$SERVER_DIR"/SCPSL_Data/Managed/*.dll "$REPO_ROOT/references/"
+echo "Copied the game DLLs to $REPO_ROOT/references"
+
 if [[ $BUILD -eq 1 ]]; then
   dotnet build "$REPO_ROOT/src/KikosMayhem/KikosMayhem.csproj" -c Release -p:SL_REFERENCES="$SERVER_DIR/SCPSL_Data/Managed"
   PLUGIN="$REPO_ROOT/src/KikosMayhem/bin/Release/net48/KikosMayhem.dll"
