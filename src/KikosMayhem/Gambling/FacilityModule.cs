@@ -77,7 +77,7 @@ public sealed class FacilityModule : MayhemModule
         if (p.Role is RoleTypeId.Scp079 or RoleTypeId.Scp0492) return;
         if (p.IsPuppet()) return;
         float per = MayhemPlugin.Cfg.Scps.HealthPerPlayer;
-        int players = Player.ReadyList.Count(x => !x.IsHost);
+        int players = Player.ReadyList.Count(x => !x.IsHost && !Items.Defs.Decoys.IsDecoy(x));
         float bonus = per * Mathf.Max(0, players - 1);
         p.MaxHealth += bonus;
         p.Health = p.MaxHealth;

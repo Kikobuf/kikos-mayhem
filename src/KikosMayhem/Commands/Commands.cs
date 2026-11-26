@@ -226,7 +226,7 @@ public sealed class MayhemCommand : ICommand
                 response = Debugging.Dump();
                 return true;
             case "dumproom":
-                response = Debugging.DumpRoom(Arg(1) ?? "HczServers");
+                response = Debugging.DumpRoom(Arg(1) ?? "HczServers", Arg(2));
                 return true;
             case "actions":
             {

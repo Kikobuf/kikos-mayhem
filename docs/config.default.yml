@@ -157,6 +157,9 @@ gambling:
 scps:
 # Extra SCP max HP per player in the server.
   health_per_player: 200
+  # Show each SCP a pop-up of its Mayhem powers when it spawns.
+  show_powers_popup: true
+  powers_popup_seconds: 5
   scp173_blink_faster: 50
   scp173_blink_per_dead: 5
   scp173_tantrum_explosion_radius: 2
@@ -204,6 +207,10 @@ scp079:
   grace_seconds: 90
   # Puppet max HP (doesn't scale with tier).
   puppet_base_health: 500
+  # SCP-079 and the Puppet hear each other anywhere (079 talks on its SCP chat key; the Puppet talks normally).
+  puppet_voice_chat: true
+  # Show the Puppet to SCP-079's map as an SCP-049 arrow (uses a hidden dummy player that only SCP-079 can see).
+  puppet_map_marker: true
   # Puppet can heal itself with medical items up to this percent of its max HP. SCP-079 pings can heal it further.
   puppet_self_heal_percent: 50
   # HP restored per 1 aux power when SCP-079 pings the Puppet.
@@ -261,7 +268,7 @@ ascension:
   # How far (meters) the phone call's voice can be heard.
   phone_voice_range: 12
   # Seconds the Puppet has to reach SCP-079's room during the recontainment run (0 = unlimited).
-  recontainment_time_limit: 0
+  recontainment_time_limit: 45
   # Keypad placement next to the Nuke Room warhead panel (meters to the side / up).
   keypad_side_offset: 1.39999998
   keypad_height_offset: 0

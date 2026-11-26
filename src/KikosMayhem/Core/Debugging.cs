@@ -46,14 +46,64 @@ public static class Debugging
         return sb.ToString();
     }
 
-    public static string DumpRoom(string name)
+    public static string DumpRoom(string name, string filter = null)
     {
         if (!Enum.TryParse<RoomName>(name, true, out var rn)) return "Unknown room name.";
         var room = Room.Get(rn).FirstOrDefault();
         if (room == null) return "Room not on this seed.";
         var sb = new StringBuilder($"{rn} @ {room.Position} rot {room.Rotation.eulerAngles}\n");
+        if (filter != null && filter.StartsWith("mesh:"))
+        {
+            string mf = filter.Substring(5);
+            foreach (var g in room.Transform.GetComponentsInChildren<MeshFilter>(true)
+                         .Where(m => m.sharedMesh != null && (mf == "*" || m.sharedMesh.name.IndexOf(mf, StringComparison.OrdinalIgnoreCase) >= 0))
+                         .GroupBy(m => m.sharedMesh.name).Take(300))
+            {
+                var m = g.First();
+                sb.AppendLine($"  mesh {g.Key} x{g.Count()} on '{m.name}' (parent '{m.transform.parent?.name}') @ {m.transform.position} size {m.GetComponent<Renderer>()?.bounds.size}");
+            }
+            return sb.ToString();
+        }
+        if (filter != null && filter.StartsWith("obj:"))
+        {
+            // Debug: export the meshes under a transform to an .obj (local to that transform) to inspect map geometry offline.
+            string pn = filter.Substring(4).Replace('_', ' ');
+            var root = room.Transform.GetComponentsInChildren<Transform>(true).FirstOrDefault(t => t.name == pn);
+            if (root == null) return "no such transform";
+            var obj = new StringBuilder();
+            int vOff = 1;
+            foreach (var mf in root.GetComponentsInChildren<MeshFilter>(true))
+            {
+                var mesh = mf.sharedMesh;
+                if (mesh == null) continue;
+                if (!mesh.isReadable) { sb.AppendLine($"  {mf.name}: mesh not readable"); continue; }
+                obj.AppendLine($"o {mf.name}");
+                foreach (var v in mesh.vertices)
+                {
+                    var w = root.InverseTransformPoint(mf.transform.TransformPoint(v));
+                    obj.AppendLine($"v {w.x:F4} {w.y:F4} {w.z:F4}");
+                }
+                var tris = mesh.triangles;
+                for (int i = 0; i < tris.Length; i += 3) obj.AppendLine($"f {tris[i] + vOff} {tris[i + 1] + vOff} {tris[i + 2] + vOff}");
+                vOff += mesh.vertexCount;
+                sb.AppendLine($"  {mf.name}: {mesh.vertexCount} verts");
+            }
+            var path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), pn.Replace(' ', '_') + ".obj");
+            System.IO.File.WriteAllText(path, obj.ToString());
+            sb.AppendLine($"  root @ {root.position} rot {root.eulerAngles} -> {path}");
+            return sb.ToString();
+        }
+        if (filter != null && filter.StartsWith("under:"))
+        {
+            string pn = filter.Substring(6);
+            foreach (var root in room.Transform.GetComponentsInChildren<Transform>(true).Where(t => t.name == pn).Take(3))
+                foreach (var t in root.GetComponentsInChildren<Transform>(true).Take(120))
+                    sb.AppendLine($"  {t.name} @ {t.position} rot {t.eulerAngles} comps [{string.Join(",", t.GetComponents<Component>().Select(c => c.GetType().Name))}]");
+            return sb.ToString();
+        }
         foreach (var g in room.Transform.GetComponentsInChildren<Transform>(true)
-                     .GroupBy(t => t.name).OrderBy(g => g.Min(t => t.position.y)).Take(80))
+                     .Where(t => filter == null || t.name.IndexOf(filter, StringComparison.OrdinalIgnoreCase) >= 0 || filter == "*")
+                     .GroupBy(t => t.name).OrderBy(g => g.Min(t => t.position.y)).Take(filter == null ? 80 : 400))
         {
             var t = g.OrderBy(x => x.position.y).First();
             sb.AppendLine($"  {g.Key} x{g.Count()} lowest @ {t.position} local {room.Transform.InverseTransformPoint(t.position)}");

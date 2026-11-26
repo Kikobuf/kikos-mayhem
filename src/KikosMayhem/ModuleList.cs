@@ -15,6 +15,7 @@ public static class ModuleList
         new Scps.Scp939Module(),
         new Scps.Scp049Module(),
         new Scps.Scp966Module(),
+        new Scps.ScpPowers(),
         new Scp079.PuppetManager(),
         new Ascension.AscensionQuest(),
         new Events.EventsModule(),

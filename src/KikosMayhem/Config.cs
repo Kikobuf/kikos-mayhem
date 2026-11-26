@@ -202,6 +202,10 @@ public sealed class ScpConfig
     [Description("Extra SCP max HP per player in the server.")]
     public float HealthPerPlayer { get; set; } = 200f;
 
+    [Description("Show each SCP a pop-up of its Mayhem powers when it spawns.")]
+    public bool ShowPowersPopup { get; set; } = true;
+    public float PowersPopupSeconds { get; set; } = 5f;
+
     public float Scp173BlinkFaster { get; set; } = 50f;
     public float Scp173BlinkPerDead { get; set; } = 5f;
     public float Scp173TantrumExplosionRadius { get; set; } = 2f;
@@ -258,6 +262,12 @@ public sealed class Scp079Config
 
     [Description("Puppet max HP (doesn't scale with tier).")]
     public float PuppetBaseHealth { get; set; } = 500f;
+
+    [Description("SCP-079 and the Puppet hear each other anywhere (079 talks on its SCP chat key; the Puppet talks normally).")]
+    public bool PuppetVoiceChat { get; set; } = true;
+
+    [Description("Show the Puppet to SCP-079's map as an SCP-049 arrow (uses a hidden dummy player that only SCP-079 can see).")]
+    public bool PuppetMapMarker { get; set; } = true;
     [Description("Puppet can heal itself with medical items up to this percent of its max HP. SCP-079 pings can heal it further.")]
     public float PuppetSelfHealPercent { get; set; } = 50f;
     [Description("HP restored per 1 aux power when SCP-079 pings the Puppet.")]
@@ -309,7 +319,7 @@ public sealed class AscensionConfig
     [Description("How far (meters) the phone call's voice can be heard.")]
     public float PhoneVoiceRange { get; set; } = 12f;
     [Description("Seconds the Puppet has to reach SCP-079's room during the recontainment run (0 = unlimited).")]
-    public float RecontainmentTimeLimit { get; set; } = 0f;
+    public float RecontainmentTimeLimit { get; set; } = 45f;
     [Description("Keypad placement next to the Nuke Room warhead panel (meters to the side / up).")]
     public float KeypadSideOffset { get; set; } = 1.4f;
     public float KeypadHeightOffset { get; set; } = 0f;

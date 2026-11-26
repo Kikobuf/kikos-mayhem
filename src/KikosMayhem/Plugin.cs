@@ -19,7 +19,7 @@ public sealed class MayhemPlugin : Plugin<MayhemConfig>
     public override string Name => "KikosMayhem";
     public override string Description => "Kiko's Mayhem — chaotic custom items, reworked SCPs, SCP-079's Puppet and global events.";
     public override string Author => "Kikobuf";
-    public override Version Version => new(1, 3, 0);
+    public override Version Version => new(1, 4, 0);
     public override Version RequiredApiVersion => new(1, 1, 7);
 
     private CoroutineHandle _fast, _slow, _second;

@@ -45,7 +45,11 @@ public static class Disguise
     {
         try
         {
-            if (hub == receiver || !Active.TryGetValue(hub, out var resolver)) return supposed;
+            if (hub == receiver) return supposed;
+            // The Puppet's map marker exists only for SCP-079; everyone else sees nothing there.
+            if (KikosMayhem.Scp079.PuppetMapMarker.IsMarker(hub))
+                return receiver.roleManager.CurrentRole.RoleTypeId == RoleTypeId.Scp079 ? supposed : RoleTypeId.Spectator;
+            if (!Active.TryGetValue(hub, out var resolver)) return supposed;
             var target = Player.Get(hub);
             var viewer = Player.Get(receiver);
             if (target == null || viewer == null || !target.IsAlive) return supposed;

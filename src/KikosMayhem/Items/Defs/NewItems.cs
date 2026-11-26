@@ -102,6 +102,12 @@ public static class Decoys
 
     public static bool IsDecoy(Player p) => p != null && All.Contains(p.ReferenceHub);
 
+    /// <summary>Marks another helper dummy (e.g. the Puppet's map marker) so every Mayhem system ignores it.</summary>
+    public static void Track(ReferenceHub hub) => All.Add(hub);
+
+    /// <summary>Removes and destroys a tracked helper dummy.</summary>
+    public static void Untrack(ReferenceHub hub) => Destroy(hub);
+
     public static void Reset()
     {
         foreach (var hub in All.ToList()) Destroy(hub);

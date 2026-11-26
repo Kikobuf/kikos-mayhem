@@ -112,13 +112,19 @@ Crit chance and crit damage stack from SCP-1853, Criti Cola, Vampirism and more.
 ### The Ascension (079 tier 5, 12+ players)
 1. A **server rack** on the bottom floor of the Server Room starts humming. The Puppet interacts with it.
 2. **Three PCs** come online, glowing blue so they're easy to spot: one in Light Containment, one in Heavy or Entrance, and one in Entrance. The Puppet uses all three.
-3. A **phone rings** in Entrance. Answering it plays a call where a voice reads a new random 9-digit code in NATO words, twice (different every round; length set by `code_length`). The code is only given by voice, so listen closely. Pressing the phone again replays the call:
+3. A **phone rings** in Entrance. Answering it plays a call where a voice reads a new random 9-digit code in NATO words (different every round). The call keeps looping at the phone, so you can always go back and listen again. The code is only given by voice:
    `0 ALPHA · 1 BRAVO · 2 CHARLIE · 3 DELTA · 4 ECHO · 5 FOXTROT · 6 GOLF · 7 HOTEL · 8 IMMINENT · 9 JUILLIET`
 4. The Puppet decodes it and types it into the **keypad in the Nuke Room**. A panel at the bottom middle of the Puppet's and SCP-079's screens shows one slot per digit, and each key pressed fills in the next slot, so you can check it before pressing OK. Typing `.code 123456789` in the console while standing at the keypad also works.
    **A wrong code detonates the Alpha Warhead instantly.** Everyone in the facility dies; anyone on Surface survives.
-5. The **Recontainment Protocol** starts: the Puppet must run to SCP-079's room and can't be teleported on the way.
+5. The **Recontainment Protocol** starts: the Puppet has **45 seconds** to run to SCP-079's room and can't be teleported on the way.
 6. **Ascension:** SCP-079 becomes a second Puppet, and both Puppets get 10s of spawn protection. The new Puppet can't be healed, but regenerates fast after a few seconds without taking damage.
    **Alpha-1 "Red Right Hand"** then respawns *everyone* (alive or dead) on Surface. The SCPs win by killing everyone or reaching the **Gate B exit**.
+
+### SCP-079 and the Puppet
+- **Voice chat:** SCP-079 and the Puppet hear each other anywhere. SCP-079 talks on its normal SCP chat key, and the Puppet just talks normally. After the ascension, both Puppets hear each other the same way.
+- **Map:** SCP-079's map shows the Puppet as an **SCP-049 arrow**. This uses a tiny hidden dummy player named "Puppet" that follows the Puppet. Only SCP-079 can see it, and every Mayhem system ignores it. SCP-079's SCP list shows the Puppet's HP under SCP-049.
+- **Generator panel:** the top-left corner of the Puppet's screen shows how many generators (lives) are left, and when someone is turning one on, which room it's in and its countdown.
+- Every SCP (and the Puppet) gets a 5-second pop-up at the top middle of the screen listing its Mayhem powers when it spawns.
 
 ### Events
 - **Global (one per round):** Rare Items Spawn Like Common, 5x Loot, Item Chances Inversed, Custom Items On Death, Causality Corruption, All Items → SCP-1853, 5x Custom Item Loot.

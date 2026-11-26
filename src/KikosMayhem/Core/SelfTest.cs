@@ -38,7 +38,11 @@ public static class SelfTest
 
     private static void Log(string s) => Logger.Info("[SelfTest] " + s);
 
-    private static List<Player> Dummies => Player.ReadyList.Where(p => p.IsDummy).ToList();
+    /// <summary>Strips rich-text tags and odd glyphs so a HUD string survives the server console.</summary>
+    private static string Plain(string s) =>
+        System.Text.RegularExpressions.Regex.Replace(s ?? "", "<[^>]*>", "").Replace("\n", " / ").Replace("■", "#").Replace("⚠", "!");
+
+    private static List<Player> Dummies => Player.ReadyList.Where(p => p.IsDummy && !Items.Defs.Decoys.IsDecoy(p)).ToList();
 
     private static bool Act(Player p, string categoryContains, params string[] actionNames)
     {
@@ -189,7 +193,9 @@ public static class SelfTest
         var pcPlayer = ds[0];
         var puppet = ds[1];
         pcPlayer.SetRole(RoleTypeId.Scp079, RoleChangeReason.RemoteAdmin, RoleSpawnFlags.All);
-        yield return Timing.WaitForSeconds(2f);
+        yield return Timing.WaitForSeconds(0.5f);
+        Log("079 powers popup: " + Plain(Hud.PeekPopup(pcPlayer)));
+        yield return Timing.WaitForSeconds(1.5f);
         foreach (var w in EnsureHuman(puppet)) yield return w;
         var pm = Scp079.PuppetManager.Instance;
         Log("pick puppet: " + pm?.Pick(puppet));
@@ -202,6 +208,41 @@ public static class SelfTest
             yield return Timing.WaitForSeconds(1f);
             Log($"079 tier now {tm.AccessTierLevel}");
         }
+
+        // Puppet on 079's map: hidden SCP-049 dummy that follows the Puppet and is only shown to SCP-079.
+        yield return Timing.WaitForSeconds(1.5f);
+        var marker = Player.ReadyList.FirstOrDefault(p => Scp079.PuppetMapMarker.IsMarker(p.ReferenceHub));
+        if (marker == null) Log("map marker: MISSING");
+        else
+        {
+            var forPc = PlayerRoles.FirstPersonControl.NetworkMessages.FpcServerPositionDistributor.InvokeRoleSyncEvent(marker.ReferenceHub, pcPlayer.ReferenceHub, marker.Role, new Mirror.NetworkWriter());
+            var forOther = PlayerRoles.FirstPersonControl.NetworkMessages.FpcServerPositionDistributor.InvokeRoleSyncEvent(marker.ReferenceHub, ds[2].ReferenceHub, marker.Role, new Mirror.NetworkWriter());
+            Log($"map marker: role={marker.Role} dist={Vector3.Distance(marker.Position, puppet.Position):F1}m hp={marker.Health:0}/{marker.MaxHealth:0} (puppet {puppet.Health:0}/{puppet.MaxHealth:0}) god={marker.IsGodModeEnabled} scale={marker.Scale.x} | 079 is sent {forPc}, others are sent {forOther} | counted alive={PlayerExt.Alive.Contains(marker)}");
+        }
+
+        // Voice: 079's SCP chat reaches the Puppet, and the Puppet's voice reaches 079, as RoundSummary (clear, anywhere).
+        var heard = new List<string>();
+        VoiceChat.Networking.VoiceTransceiver.VoiceMessageReceiving spy = (m, h) => heard.Add($"{Player.Get(h)?.Nickname}:{m.Channel}");
+        VoiceChat.Networking.VoiceTransceiver.OnVoiceMessageReceiving += spy;
+        try
+        {
+            var enc = new VoiceChat.Codec.OpusEncoder(VoiceChat.Codec.Enums.OpusApplicationType.Voip);
+            var buf = new byte[512];
+            int len = enc.Encode(new float[480], buf);
+            VoiceChat.Networking.VoiceTransceiver.ServerReceiveMessage(pcPlayer.Connection, new VoiceChat.Networking.VoiceMessage(pcPlayer.ReferenceHub, VoiceChat.VoiceChatChannel.ScpChat, buf, len, false));
+            Log($"079 talks (SCP chat) -> heard by [{string.Join(", ", heard)}] (puppet {puppet.Nickname} should get RoundSummary)");
+            heard.Clear();
+            VoiceChat.Networking.VoiceTransceiver.ServerReceiveMessage(puppet.Connection, new VoiceChat.Networking.VoiceMessage(puppet.ReferenceHub, VoiceChat.VoiceChatChannel.Proximity, buf, len, false));
+            Log($"puppet talks (proximity) -> heard by [{string.Join(", ", heard)}] (079 {pcPlayer.Nickname} should get RoundSummary)");
+        }
+        finally { VoiceChat.Networking.VoiceTransceiver.OnVoiceMessageReceiving -= spy; }
+
+        // Generator panel (top left) while a generator is being turned on.
+        var gen = Scp079.GeneratorSpawner.All.FirstOrDefault(g => !g.Engaged);
+        if (gen != null) gen.Activating = true;
+        yield return Timing.WaitForSeconds(1.2f);
+        Log("puppet generator panel: " + Plain(Hud.PeekTopLeft(puppet)));
+        if (gen != null) gen.Activating = false;
 
         // Puppet damage rules: SCP can't hurt puppet, human can.
         var human = ds[2];

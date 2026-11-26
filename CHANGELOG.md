@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.4.0: SCP-079 and the Puppet
+- The phone call reads the code once and loops at the phone until the code is entered.
+- The recontainment run has a 45-second limit, with a countdown in the objective.
+- SCP-079 and the Puppet hear each other anywhere (079 on its SCP chat key, the Puppet normally). Both Puppets do after the ascension.
+- SCP-079's map shows the Puppet as an SCP-049 arrow, using a hidden dummy only 079 can see.
+- The Puppet's top-left panel shows how many generators are left, and the room and countdown of any generator being turned on.
+- SCPs get a 5-second pop-up of their Mayhem powers when they spawn.
+- New config: `puppet_voice_chat`, `puppet_map_marker`, `show_powers_popup`, `powers_popup_seconds`. `recontainment_time_limit` now defaults to 45.
+
 ## 1.3.0: the phone talks
 - The phone now rings with real audio, and answering it plays a call: a voice reads the code in NATO words, twice. Press the phone again to replay it.
 - The code panel only shows the digits typed on the keypad. The NATO words are given by voice only.

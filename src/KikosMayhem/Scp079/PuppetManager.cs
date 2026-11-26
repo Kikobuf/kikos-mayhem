@@ -134,6 +134,8 @@ public sealed class PuppetManager : MayhemModule
         Scp173Events.AddingObserver += On173Observer;
         Combat.Pre.Add(PuppetDamageRules);
         Combat.KillHooks.Add(OnKill);
+        PuppetVoice.Register();
+        PuppetMapMarker.Register();
         ItemEngine.Define(new ToothAndNail());
         ItemEngine.Define(new Scp079Grenade());
     }
@@ -157,6 +159,8 @@ public sealed class PuppetManager : MayhemModule
         MayhemSettings.QuickRecyclePressed -= QuickRecycle;
         Scp096Events.AddingTarget -= On096Target;
         Scp173Events.AddingObserver -= On173Observer;
+        PuppetVoice.Unregister();
+        PuppetMapMarker.Unregister();
         Instance = null;
     }
 
@@ -197,7 +201,7 @@ public sealed class PuppetManager : MayhemModule
         Active = true;
         _computerHub = pc.ReferenceHub;
         var cfg = MayhemPlugin.Cfg.Scp079;
-        int players = Player.ReadyList.Count(p => !p.IsHost);
+        int players = Player.ReadyList.Count(p => !p.IsHost && !Items.Defs.Decoys.IsDecoy(p));
         GeneratorSpawner.Adjust(GeneratorSpawner.TargetFor(players));
         PickDeadline = Time.time + cfg.PickSeconds;
 
@@ -274,9 +278,11 @@ public sealed class PuppetManager : MayhemModule
             p.CustomInfo = ascendedForm ? "<color=#00FFFF>ASCENDED SCP-079</color>" : "<color=#FF4040>SCP-079's Puppet</color>";
             p.MaxHumeShield = HumeMax;
             p.HumeShield = HumeMax;
+            if ((grace || ascendedForm) && MayhemPlugin.Cfg.Scps.ShowPowersPopup)
+                Hud.Popup(p, Scps.ScpPowers.PuppetText(ascendedForm), MayhemPlugin.Cfg.Scps.PowersPopupSeconds);
             Hud.Message(p, ascendedForm
                 ? "<color=#00FFFF>You have ascended. Kill everyone, or reach the Gate B exit.</color>"
-                : "<color=#FF4040>You are SCP-079's Puppet. Protect the computer — you die with it.</color>", 8f);
+                : "<color=#FF4040>You are SCP-079's Puppet. Protect the computer — you die with it.</color>\n<size=20>SCP-079 can hear you anywhere, and you can hear it.</size>", 8f);
         });
     }
 
@@ -761,6 +767,7 @@ public sealed class PuppetManager : MayhemModule
             Hud.SetInfo(puppet, "puppet", Ascended
                 ? "<color=#00FFFF>ASCENDED</color> · Kill everyone or reach the Gate B exit"
                 : $"<color=#FF4040>SCP-079</color> T{Tier} · Lives {Lives}/{MaxLives} · T&N tier {ToothAndNail.Tier}{grace}", 1f, 1);
+            if (!Ascended) Hud.SetTopLeft(puppet, "gens", GeneratorPanel(), 1f);
         }
 
         // Vanilla engages every generator when the last other SCP dies — undo that while the Puppet lives.
@@ -779,6 +786,34 @@ public sealed class PuppetManager : MayhemModule
                 : $"Puppet <color=#FF4040>{main.Health:0}</color>/{main.MaxHealth:0} HP · <color=#88CCFF>{main.HumeShield:0} HS</color> · {main.Room?.Name.ToString() ?? "?"} · Lives {Lives}/{MaxLives}";
             Hud.SetInfo(pc, "pc", text, 1f, 1);
         }
+    }
+
+    /// <summary>
+    /// The Puppet's top-left panel: how many generators (lives) are left, and where any generator is being
+    /// turned on right now, with its countdown.
+    /// </summary>
+    private string GeneratorPanel()
+    {
+        var gens = GeneratorSpawner.All.ToList();
+        int left = gens.Count(g => !g.Engaged);
+        var sb = new System.Text.StringBuilder();
+        string boxes = string.Concat(gens.OrderBy(g => g.Engaged).Select(g => g.Engaged ? "<color=#555555>■</color>" : "<color=#FF4040>■</color>"));
+        sb.Append($"<b>GENERATORS</b> {boxes} <color=#FF4040>{left}</color>/{gens.Count} left");
+        foreach (var g in gens.Where(g => g.Activating && !g.Engaged))
+        {
+            string where = g.transform.position.TryGetRoom(out var room) ? PrettyRoom(room.Name) : "unknown room";
+            sb.Append($"\n<color=#FFD700>⚠ ON: {where} ({Mathf.Max(0, g.RemainingTime)}s)</color>");
+        }
+        return sb.ToString();
+    }
+
+    /// <summary>"HczServers" -> "HCZ Servers".</summary>
+    public static string PrettyRoom(RoomName name)
+    {
+        string s = name.ToString();
+        foreach (var (prefix, label) in new[] { ("Hcz", "HCZ "), ("Lcz", "LCZ "), ("Ez", "EZ ") })
+            if (s.StartsWith(prefix)) { s = label + s.Substring(prefix.Length); break; }
+        return System.Text.RegularExpressions.Regex.Replace(s, "(?<=[a-z0-9])(?=[A-Z])", " ").Trim();
     }
 
     // ───────── ascension hooks ─────────

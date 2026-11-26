@@ -9,7 +9,8 @@ namespace KikosMayhem.Core;
 /// <summary>
 /// One hint per player, re-sent every 0.5s, composed from several regions so Mayhem systems
 /// never overwrite each other's hints:
-///   - Top: global event banner
+///   - Top: global event banner, and under it a short pop-up (SCP powers at spawn)
+///   - Top left: persistent panels (the Puppet's generator list)
 ///   - Right: status effects with timers + crit stats
 ///   - Center: short-lived messages (crits, "Try again", item notifications)
 ///   - Bottom: held custom item description, trackers, Puppet / 079 info
@@ -25,6 +26,24 @@ public static class Hud
 
     private static readonly Dictionary<ReferenceHub, Dictionary<string, Line>> Bottom = new();
     private static readonly Dictionary<ReferenceHub, Dictionary<string, Line>> Center = new();
+    private static readonly Dictionary<ReferenceHub, Dictionary<string, Line>> TopLeft = new();
+    private static readonly Dictionary<ReferenceHub, Dictionary<string, Line>> TopPopup = new();
+
+    /// <summary>A keyed panel in the top-left corner (re-set it every tick to keep it up).</summary>
+    public static void SetTopLeft(Player p, string key, string text, float duration = 1.2f, int order = 0) =>
+        Put(TopLeft, p, key, text, duration, order);
+
+    /// <summary>Self-test helpers.</summary>
+    public static string PeekTopLeft(Player p) => TopLeft.TryGetValue(p.ReferenceHub, out var d) ? string.Join(" | ", d.Values.Select(l => l.Text)) : "";
+    public static string PeekPopup(Player p) => TopPopup.TryGetValue(p.ReferenceHub, out var d) ? string.Join(" | ", d.Values.Select(l => l.Text)) : "";
+
+    public static void ClearTopLeft(Player p, string key)
+    {
+        if (TopLeft.TryGetValue(p.ReferenceHub, out var d)) d.Remove(key);
+    }
+
+    /// <summary>A pop-up at the top middle of the screen (below the event banner).</summary>
+    public static void Popup(Player p, string text, float duration = 5f) => Put(TopPopup, p, "popup", text, duration, 0);
 
     public static string Banner = "";
 
@@ -57,6 +76,8 @@ public static class Hud
     {
         Bottom.Clear();
         Center.Clear();
+        TopLeft.Clear();
+        TopPopup.Clear();
         Banner = "";
     }
 
@@ -71,6 +92,26 @@ public static class Hud
             // Top banner (global event).
             if (!string.IsNullOrEmpty(Banner))
                 sb.Append("<voffset=33em><size=22>").Append(Banner).Append("</size></voffset>\n");
+
+            // Top middle pop-up.
+            if (TopPopup.TryGetValue(p.ReferenceHub, out var popup))
+            {
+                Prune(popup, now);
+                foreach (var l in popup.Values)
+                    sb.Append("<voffset=29em><size=20>").Append(l.Text).Append("</size></voffset>\n");
+            }
+
+            // Top left panels.
+            if (TopLeft.TryGetValue(p.ReferenceHub, out var topLeft))
+            {
+                Prune(topLeft, now);
+                if (topLeft.Count > 0)
+                {
+                    sb.Append("<align=left><voffset=27em><size=19>");
+                    foreach (var l in topLeft.Values.OrderBy(x => x.Order)) sb.Append(l.Text).Append('\n');
+                    sb.Append("</size></voffset></align>\n");
+                }
+            }
 
             // Right: effects
             var effects = Effects.EffectManager.Describe(p).ToList();
