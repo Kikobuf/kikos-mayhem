@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.4.1: the real keypad
+- The ascension code is typed on the keypad printed on the Nuke Room's warhead panel (7 8 9 / 4 5 6 / 1 2 3 / X 0 ✓). The plugin no longer builds its own keypad there (it's only a fallback if the panel can't be found).
+- New admin command `mayhem keypad [seconds]` highlights the buttons, and new config `use_map_keypad`, `keypad_u`, `keypad_v`, `keypad_pitch_u`, `keypad_pitch_v` to line them up.
+
 ## 1.4.0: SCP-079 and the Puppet
 - The phone call reads the code once and loops at the phone until the code is entered.
 - The recontainment run has a 45-second limit, with a countdown in the objective.

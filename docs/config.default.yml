@@ -269,7 +269,13 @@ ascension:
   phone_voice_range: 12
   # Seconds the Puppet has to reach SCP-079's room during the recontainment run (0 = unlimited).
   recontainment_time_limit: 45
-  # Keypad placement next to the Nuke Room warhead panel (meters to the side / up).
+  # Use the keypad printed on the Nuke Room's warhead panel. keypad_u / keypad_v: its center in meters from the middle of the panel's face (u = right, v = up the slope, as seen standing at the panel). keypad_pitch_u / keypad_pitch_v: spacing between keys. Admin command 'mayhem keypad' shows the keys so you can nudge these.
+  use_map_keypad: true
+  keypad_u: -1.024
+  keypad_v: -0.382
+  keypad_pitch_u: 0.093
+  keypad_pitch_v: 0.078
+  # Fallback keypad (only if the warhead panel can't be found): placement next to the panel (meters to the side / up).
   keypad_side_offset: 1.39999998
   keypad_height_offset: 0
   ascended_health: 1500

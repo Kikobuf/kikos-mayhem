@@ -114,7 +114,7 @@ Crit chance and crit damage stack from SCP-1853, Criti Cola, Vampirism and more.
 2. **Three PCs** come online, glowing blue so they're easy to spot: one in Light Containment, one in Heavy or Entrance, and one in Entrance. The Puppet uses all three.
 3. A **phone rings** in Entrance. Answering it plays a call where a voice reads a new random 9-digit code in NATO words (different every round). The call keeps looping at the phone, so you can always go back and listen again. The code is only given by voice:
    `0 ALPHA · 1 BRAVO · 2 CHARLIE · 3 DELTA · 4 ECHO · 5 FOXTROT · 6 GOLF · 7 HOTEL · 8 IMMINENT · 9 JUILLIET`
-4. The Puppet decodes it and types it into the **keypad in the Nuke Room**. A panel at the bottom middle of the Puppet's and SCP-079's screens shows one slot per digit, and each key pressed fills in the next slot, so you can check it before pressing OK. Typing `.code 123456789` in the console while standing at the keypad also works.
+4. The Puppet decodes it and types it into the **keypad on the warhead panel in the Nuke Room** (the 7 8 9 / 4 5 6 / 1 2 3 / X 0 ✓ pad at its bottom left; X clears, ✓ submits). A panel at the bottom middle of the Puppet's and SCP-079's screens shows one slot per digit, and each key pressed fills in the next slot, so you can check it before pressing OK. Typing `.code 123456789` in the console while standing at the keypad also works.
    **A wrong code detonates the Alpha Warhead instantly.** Everyone in the facility dies; anyone on Surface survives.
 5. The **Recontainment Protocol** starts: the Puppet has **45 seconds** to run to SCP-079's room and can't be teleported on the way.
 6. **Ascension:** SCP-079 becomes a second Puppet, and both Puppets get 10s of spawn protection. The new Puppet can't be healed, but regenerates fast after a few seconds without taking damage.
@@ -164,6 +164,7 @@ Stay in the nuke room too long and you get **Irradiated**. For humans it ramps u
 | `mayhem ascension start` | Admin | Start the ascension questline (079 must be tier 5) |
 | `mayhem effect <player\|me> <effect> [seconds]` | Admin | Apply a Mayhem effect |
 | `mayhem selftest` | Admin, **test servers only** | Drives dummy players through every item and system |
+| `mayhem keypad [seconds]` | Admin | Highlights the warhead panel's keypad buttons so you can check they line up |
 | `mayhem selftest nuke` | Admin, **test servers only** | Runs the ascension with a wrong keypad code (detonates the warhead) |
 
 Admin commands need the `GivingItems` RA permission. You can also alias them as `km ...`.
@@ -211,7 +212,7 @@ src/KikosMayhem/
 - M.Y.H.M Insurgents and the Puppet both use the Tutorial role. Gunfire between them deals full damage, but grenades and melee follow the game's team rules and won't hurt each other.
 - Not included: features from Dr. Bright's other servers rather than the Mayhem mode itself, such as SCP tickets, Patreon perks, purgatory/overflow servers and SCP-575 blackouts.
 - *You May Want To Be Quiet* decodes voice on the server to measure loudness, so tune `be_quiet_threshold` to your community's mics.
-- The nuke room keypad is placed next to the warhead panel. If it looks off on a future map update, adjust `keypad_side_offset` / `keypad_height_offset`.
+- The warhead panel's keypad buttons were lined up from a screenshot, because the server can't load the panel's model. If pressing a key types the wrong digit, run `mayhem keypad` in-game to see where the buttons are, then nudge `keypad_u` / `keypad_v` (and the pitch values) in the config.
 
 ## License
 MIT. See [LICENSE](LICENSE).

@@ -320,7 +320,14 @@ public sealed class AscensionConfig
     public float PhoneVoiceRange { get; set; } = 12f;
     [Description("Seconds the Puppet has to reach SCP-079's room during the recontainment run (0 = unlimited).")]
     public float RecontainmentTimeLimit { get; set; } = 45f;
-    [Description("Keypad placement next to the Nuke Room warhead panel (meters to the side / up).")]
+    [Description("Use the keypad printed on the Nuke Room's warhead panel. keypad_u / keypad_v: its center in meters from the middle of the panel's face (u = right, v = up the slope, as seen standing at the panel). keypad_pitch_u / keypad_pitch_v: spacing between keys. Admin command 'mayhem keypad' shows the keys so you can nudge these.")]
+    public bool UseMapKeypad { get; set; } = true;
+    public float KeypadU { get; set; } = -1.024f;
+    public float KeypadV { get; set; } = -0.382f;
+    public float KeypadPitchU { get; set; } = 0.093f;
+    public float KeypadPitchV { get; set; } = 0.078f;
+
+    [Description("Fallback keypad (only if the warhead panel can't be found): placement next to the panel (meters to the side / up).")]
     public float KeypadSideOffset { get; set; } = 1.4f;
     public float KeypadHeightOffset { get; set; } = 0f;
     public float AscendedHealth { get; set; } = 1500f;

@@ -95,10 +95,17 @@ public static class Debugging
         }
         if (filter != null && filter.StartsWith("under:"))
         {
-            string pn = filter.Substring(6);
+            string pn = filter.Substring(6).Replace('_', ' ');
             foreach (var root in room.Transform.GetComponentsInChildren<Transform>(true).Where(t => t.name == pn).Take(3))
                 foreach (var t in root.GetComponentsInChildren<Transform>(true).Take(120))
-                    sb.AppendLine($"  {t.name} @ {t.position} rot {t.eulerAngles} comps [{string.Join(",", t.GetComponents<Component>().Select(c => c.GetType().Name))}]");
+                {
+                    var mf = t.GetComponent<MeshFilter>();
+                    string mb = mf != null && mf.sharedMesh != null ? $" meshBounds c{mf.sharedMesh.bounds.center:F3} s{mf.sharedMesh.bounds.size:F3} lossy{t.lossyScale:F3}" : "";
+                    var bc = t.GetComponent<BoxCollider>();
+                    if (bc != null) mb += $" box c{bc.center:F3} s{bc.size:F3} lossy{t.lossyScale:F3}";
+                    var local = root.InverseTransformPoint(t.position);
+                    sb.AppendLine($"  {t.name} @ {t.position:F3} local {local:F3} rot {t.eulerAngles:F1} fwd {t.forward:F2} up {t.up:F2} right {t.right:F2}{mb} comps [{string.Join(",", t.GetComponents<Component>().Select(c => c.GetType().Name))}]");
+                }
             return sb.ToString();
         }
         foreach (var g in room.Transform.GetComponentsInChildren<Transform>(true)

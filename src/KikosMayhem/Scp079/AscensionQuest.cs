@@ -366,13 +366,106 @@ public sealed class AscensionQuest : MayhemModule
     {
         Current = Stage.Keypad;
         _typed = "";
+        if (TryMapKeypad(out var buttons, out var rot, out var center, out var normal))
+        {
+            // The warhead panel already has a keypad drawn on it (7 8 9 / 4 5 6 / 1 2 3 / X 0 ✓): just make its keys pressable.
+            _keypadPos = center + normal * 0.3f;
+            var cfg = MayhemPlugin.Cfg.Ascension;
+            var size = new Vector3(cfg.KeypadPitchU * 0.98f, cfg.KeypadPitchV * 0.98f, 0.1f);
+            foreach (var (key, pos) in buttons)
+            {
+                var k = key;
+                Button(pos, rot, size, 0f, p => Press(p, k));
+            }
+            Light(center + normal * 0.35f, new Color(0f, 1f, 0.4f), 0.8f, 0.6f);
+        }
+        else SpawnFallbackKeypad();
+        Tell("<color=#00FFFF>Listen to the call, then enter the code on the keypad of the warhead panel in the Nuke Room.</color> The call keeps looping at the phone. (At the keypad you can also type <b>.code 123456789</b> in the console.)", 10f);
+    }
+
+    private static readonly string[] MapKeys = { "7", "8", "9", "4", "5", "6", "1", "2", "3", "C", "0", "OK" };
+
+    /// <summary>
+    /// Works out where the keypad printed on the warhead panel is. The panel's face is its big box collider; the keypad
+    /// sits at a fixed spot on that face (config: keypad_u / keypad_v, in meters from the face center; u = right,
+    /// v = up the slope, as seen by someone standing at the panel).
+    /// </summary>
+    private static bool TryMapKeypad(out List<(string key, Vector3 pos)> buttons, out Quaternion rot, out Vector3 center, out Vector3 normal)
+    {
+        buttons = new List<(string, Vector3)>();
+        rot = Quaternion.identity;
+        center = normal = Vector3.zero;
+        var panel = Warhead.BaseNukesitePanel;
+        if (panel == null || !MayhemPlugin.Cfg.Ascension.UseMapKeypad) return false;
+        var face = panel.GetComponentsInChildren<BoxCollider>(true).FirstOrDefault(c => c.name == "Collider" && c.transform.lossyScale.y > 2f);
+        if (face == null) return false;
+        var t = face.transform;
+        normal = t.forward;  // points out of the panel, toward the player
+        var u = t.up;        // player's right
+        var v = t.right;     // up the slope of the panel
+        var faceCenter = t.position + normal * (t.lossyScale.z * 0.5f);
+        var cfg = MayhemPlugin.Cfg.Ascension;
+        center = faceCenter + u * cfg.KeypadU + v * cfg.KeypadV;
+        rot = Quaternion.LookRotation(-normal, v);
+        for (int i = 0; i < MapKeys.Length; i++)
+        {
+            int row = i / 3, col = i % 3;
+            var pos = center + u * ((col - 1) * cfg.KeypadPitchU) - v * ((row - 1.5f) * cfg.KeypadPitchV) + normal * 0.02f;
+            buttons.Add((MapKeys[i], pos));
+        }
+        return true;
+    }
+
+    /// <summary>Self-test: where the lever and display sit in the keypad's face frame (lever should be u≈-1.27, v≈0.31).</summary>
+    public static string DescribeKeypadFrame()
+    {
+        var panel = Warhead.BaseNukesitePanel;
+        var face = panel?.GetComponentsInChildren<BoxCollider>(true).FirstOrDefault(c => c.name == "Collider" && c.transform.lossyScale.y > 2f);
+        if (face == null) return "no panel face";
+        var t = face.transform;
+        var fc = t.position + t.forward * (t.lossyScale.z * 0.5f);
+        string Uv(string name)
+        {
+            var x = panel.GetComponentsInChildren<Transform>(true).FirstOrDefault(c => c.name == name);
+            if (x == null) return $"{name}=?";
+            var d = x.position - fc;
+            return $"{name} u={Vector3.Dot(d, t.up):F2} v={Vector3.Dot(d, t.right):F2} n={Vector3.Dot(d, t.forward):F2}";
+        }
+        return $"{Uv("Lever")}, {Uv("Display")}, {Uv("Lil_Diodes")}";
+    }
+
+    /// <summary>Admin calibration aid: shows where the keypad buttons are for a while.</summary>
+    public string DebugShowKeypad(float seconds = 60f)
+    {
+        if (!TryMapKeypad(out var buttons, out var rot, out var center, out var normal)) return "Couldn't find the warhead panel's keypad (or use_map_keypad is off).";
+        var toys = new List<AdminToy>();
+        foreach (var (key, pos) in buttons)
+        {
+            var c = PrimitiveObjectToy.Create(pos + normal * 0.03f, rot, new Vector3(MayhemPlugin.Cfg.Ascension.KeypadPitchU * 0.8f, MayhemPlugin.Cfg.Ascension.KeypadPitchV * 0.8f, 0.005f), null, false);
+            c.Type = PrimitiveType.Cube;
+            c.Color = new Color(0f, 1f, 0.3f, 0.35f);
+            c.Flags = PrimitiveFlags.Visible;
+            c.Spawn();
+            var tx = TextToy.Create(pos + normal * 0.04f, rot * Quaternion.Euler(0, 180, 0), Vector3.one * 0.03f, null, false);
+            tx.TextFormat = $"<color=#FFFF00>{key}</color>";
+            tx.DisplaySize = new Vector2(200, 100);
+            tx.Spawn();
+            toys.Add(c);
+            toys.Add(tx);
+        }
+        Loops.After(seconds, () => { foreach (var x in toys) if (!x.IsDestroyed) x.Destroy(); });
+        return $"Showing the keypad buttons for {seconds:0}s at {center}. Nudge them with keypad_u / keypad_v / keypad_pitch_u / keypad_pitch_v in the config.";
+    }
+
+    /// <summary>Old self-built keypad, used if the warhead panel can't be found.</summary>
+    private void SpawnFallbackKeypad()
+    {
         var panel = Warhead.BaseNukesitePanel;
         var room = Room.Get(RoomName.HczWarhead).FirstOrDefault();
         Vector3 basePos;
         Quaternion rot;
         if (panel != null && room != null)
         {
-            // Face the keypad into the room (its buttons are on the -forward side), next to the warhead panel.
             var panelPos = panel.transform.position;
             var intoWall = panelPos - room.Position;
             intoWall.y = 0;
@@ -395,18 +488,16 @@ public sealed class AscensionQuest : MayhemModule
         _keypadDisplay = Text(basePos + Vector3.up * 0.27f - fwd * 0.04f, rot * Quaternion.Euler(0, 180, 0), "<color=#00FF66>____</color>", 0.06f);
         Light(basePos - fwd * 0.4f, new Color(0f, 1f, 0.4f), 1.5f, 1f);
 
-        string[] keys = { "1", "2", "3", "4", "5", "6", "7", "8", "9", "C", "0", "OK" };
-        for (int i = 0; i < keys.Length; i++)
+        for (int i = 0; i < MapKeys.Length; i++)
         {
             int row = i / 3, col = i % 3;
             var pos = basePos + right * ((col - 1) * 0.13f) + Vector3.up * (0.12f - row * 0.11f) - fwd * 0.035f;
-            var key = keys[i];
+            var key = MapKeys[i];
             var color = key == "OK" ? new Color(0.1f, 0.6f, 0.1f) : key == "C" ? new Color(0.6f, 0.1f, 0.1f) : new Color(0.35f, 0.35f, 0.4f);
             Prim(PrimitiveType.Cube, pos, rot, new Vector3(0.1f, 0.08f, 0.02f), color, false);
             Text(pos - fwd * 0.015f, rot * Quaternion.Euler(0, 180, 0), key, 0.035f);
             Button(pos, rot, new Vector3(0.11f, 0.09f, 0.1f), 0f, p => Press(p, key));
         }
-        Tell("<color=#00FFFF>Listen to the call, then enter the code on the keypad in the Nuke Room.</color> The call keeps looping at the phone. (At the keypad you can also type <b>.code 123456789</b> in the console.)", 10f);
     }
 
     private void Press(Player p, string key)
@@ -624,6 +715,7 @@ public sealed class AscensionQuest : MayhemModule
                 LabApi.Features.Console.Logger.Info($"[SelfTest] phone call looping: {_callEnds == float.MaxValue}, speakers={_sounds.Count}");
                 break;
             case Stage.Keypad:
+                LabApi.Features.Console.Logger.Info($"[SelfTest] keypad frame: {DescribeKeypadFrame()}; keypad at {_keypadPos}, map keypad={TryMapKeypad(out _, out _, out _, out _)}, panel at {Warhead.BaseNukesitePanel?.transform.position}");
                 puppet.Position = _keypadPos;
                 // Type digit by digit like the keypad buttons do, so the on-screen slots fill in.
                 string entry = wrongCode ? new string(_code.Select(c => c == '9' ? '0' : (char)(c + 1)).ToArray()) : _code;

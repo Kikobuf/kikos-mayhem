@@ -95,6 +95,7 @@ public sealed class MayhemCommand : ICommand
         "mayhem puppet <player>            — force someone to be SCP-079's Puppet\n" +
         "mayhem ascension start            — start the ascension questline now\n" +
         "mayhem effect <player|me> <Name> [seconds] — apply a Mayhem effect\n" +
+        "mayhem keypad [seconds]           — highlight the warhead panel's keypad buttons (calibration)\n" +
         "mayhem dump                       — print positions of Mayhem landmarks (debug)";
 
     public bool Execute(ArraySegment<string> arguments, ICommandSender sender, out string response)
@@ -224,6 +225,9 @@ public sealed class MayhemCommand : ICommand
             }
             case "dump":
                 response = Debugging.Dump();
+                return true;
+            case "keypad":
+                response = Ascension.AscensionQuest.Instance?.DebugShowKeypad(float.TryParse(Arg(1), out var ks) ? ks : 60f) ?? "Ascension module not loaded.";
                 return true;
             case "dumproom":
                 response = Debugging.DumpRoom(Arg(1) ?? "HczServers", Arg(2));
